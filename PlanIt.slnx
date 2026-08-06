@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PlanIt.Api.Tests/PlanIt.Api.Tests.csproj" />
+  <Project Path="PlanIt.Api/PlanIt.Api.csproj" />
+</Solution>

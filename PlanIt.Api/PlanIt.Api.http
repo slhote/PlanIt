@@ -1,0 +1,6 @@
+@PlanIt.Api_HostAddress = http://localhost:5223
+
+GET {{PlanIt.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

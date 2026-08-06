@@ -1,0 +1,13 @@
+# Local dev only. The database service is intentionally omitted here —
+# the persistence subplan (.claude/docs/plans/) hasn't picked an engine yet.
+# Add a db service once that's decided, and point PlanIt.Api's connection
+# string at it via an environment variable / user secret.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: PlanIt.Api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
