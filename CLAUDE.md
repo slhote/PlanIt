@@ -16,7 +16,9 @@ Both .NET projects target .NET 10 with nullable reference types enabled.
 
 ## Plan Documents
 
-The master plan and all subplans live under `.claude/docs/plans/`. Start with `.claude/docs/plans/planit-master-plan.md` — it records the cross-cutting decisions already made (idempotency, concurrency approach, auth model, assignment model, cascade delete behavior, deferred DB engine choice) and the subplan breakdown/sequencing. Read it before writing a new subplan or making a decision that conflicts with it. New plan documents belong under `.claude/docs/plans/`, not any ad hoc location.
+**ALWAYS place every plan document for this project under `.claude/docs/plans/`** — the master plan, every subplan, every feature-planning doc brought in from elsewhere (e.g. `similar-tasks-feature-planning.md`), and anything written during a future plan-mode session. No exceptions, no ad hoc locations, nothing left stranded outside the repo (e.g. in a plan-mode scratch file, `Downloads`, or elsewhere) — if a plan doc is worth keeping, it gets copied/written into this folder as part of that same turn, not "later."
+
+Start with `.claude/docs/plans/planit-master-plan.md` — it records the cross-cutting decisions already made (idempotency, concurrency approach, auth model, assignment model, cascade delete behavior, deferred DB engine choice) and the subplan breakdown/sequencing. Read it before writing a new subplan or making a decision that conflicts with it.
 
 ## Common Commands
 
