@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-**PlanIt** is a mobile-first task board web app for breaking project work into a Project → Feature/Task → Subtask hierarchy, with drag-and-drop status columns and real-time multi-user collaboration. Portfolio project.
+**PlanIt** is a mobile-first task board web app for breaking project work into a Project → Feature/Task hierarchy, with drag-and-drop status columns and real-time multi-user collaboration. Portfolio project.
 
 - **PlanIt.Api** — ASP.NET Core 10 Web API + SignalR hub. No persistence layer wired up yet.
 - **PlanIt.Web** — React 19 + TypeScript + Vite frontend, mobile-first. Bare Vite template as of this writing — no routing, pages, or API integration yet.

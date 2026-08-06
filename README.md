@@ -2,7 +2,7 @@
 
 Keep track of the work and plans you have with PlanIt! PlanIt helps you organize your projects and break down the work into more manageable features and tasks so you don't get overwhelmed with everything that needs to get done.
 
-A mobile-first task board web app for breaking project work into a **Project → Feature/Task → Subtask** hierarchy, with drag-and-drop status columns and real-time multi-user collaboration. Built as a portfolio project.
+A mobile-first task board web app for breaking project work into a **Project → Feature/Task** hierarchy, with drag-and-drop status columns and real-time multi-user collaboration. Built as a portfolio project.
 
 ## Stack
 
