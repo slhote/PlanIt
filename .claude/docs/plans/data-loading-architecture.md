@@ -104,6 +104,14 @@ type ProjectState = {
 
 ## SignalR Integration
 
+> **Note:** The event names below (`TaskUpdated`, `FeatureUpdated`) are illustrative. The finalized
+> MVP event set — 7 typed events split into structural (board updates immediately: `WorkItemCreated`,
+> `WorkItemDeleted`, `WorkItemStatusChanged`, `WorkItemMoved`) vs. content-only (cache-invalidation
+> ping: `WorkItemUpdated`) vs. membership (`ProjectMemberAdded`/`Removed`) — is defined in
+> [`planit-system-design-architecture.md`](planit-system-design-architecture.md#3-real-time-collaboration-signalr-architecture),
+> section 3. That doc also confirms the per-project group design and the domain-event-based
+> broadcast flow (service → domain event → notifier → hub) referenced here.
+
 Hub broadcasts when data changes:
 
 ```csharp
