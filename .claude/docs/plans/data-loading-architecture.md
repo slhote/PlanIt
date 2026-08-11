@@ -77,6 +77,17 @@ GET /api/tasks
 
 ## Frontend State Management
 
+> **Note:** The hand-rolled hooks/types below (`CachedFeature`, `ProjectState`,
+> `useProjectData.ts`, `useSignalR.ts`) are superseded by
+> [`planit-frontend-scaffolding.md`](planit-frontend-scaffolding.md)'s decision to use **TanStack
+> Query** instead of plain hooks/Context for state management — it's purpose-built for exactly this
+> server-state-caching-with-event-driven-invalidation problem, and needs less custom code for the
+> same design. The *concepts* below (lazy load, cache, `invalidated` flag set by SignalR, re-fetch on
+> next open) all carry over directly onto TanStack Query's `useQuery`/`invalidateQueries`/
+> `setQueryData` model — see that document's "State management: TanStack Query" section for the
+> concrete mapping. Only the implementation mechanism changes; nothing here is factually wrong, just
+> superseded.
+
 ```typescript
 type CachedFeature = {
   data: {
