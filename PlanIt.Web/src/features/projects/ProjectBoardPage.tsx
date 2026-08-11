@@ -105,7 +105,7 @@ export function ProjectBoardPage() {
   const members = membersQuery.data ?? [];
 
   return (
-    <div className="page" style={{ maxWidth: 960 }}>
+    <div className="page" style={{ maxWidth: 1200 }}>
       <div className="page-header">
         <div>
           <div className="row" style={{ gap: "var(--space-2)" }}>
