@@ -107,6 +107,33 @@ export function countCascadeDeletions(id: Guid): number {
   return seedWorkItems.filter((w) => w.parentId === id).length;
 }
 
+/**
+ * Persists a new within-column order for a status group. There's no `order`/
+ * `position` field in the persistence schema yet — this is a gap the mock
+ * surfaces rather than papers over. For the mock, order is just array
+ * position: pull the reordered items out and reinsert them as a block at the
+ * earliest index any of them occupied, so their relative position among
+ * items from other statuses/projects stays stable.
+ */
+export async function reorderWorkItems(orderedIds: Guid[]): Promise<void> {
+  return mutate(() => {
+    const idSet = new Set(orderedIds);
+    const itemsById = new Map<Guid, WorkItem>();
+    let insertAt = -1;
+    for (let i = seedWorkItems.length - 1; i >= 0; i--) {
+      const item = seedWorkItems[i];
+      if (idSet.has(item.id)) {
+        itemsById.set(item.id, item);
+        insertAt = i;
+        seedWorkItems.splice(i, 1);
+      }
+    }
+    if (insertAt === -1) return;
+    const ordered = orderedIds.map((id) => itemsById.get(id)).filter((item): item is WorkItem => !!item);
+    seedWorkItems.splice(insertAt, 0, ...ordered);
+  }, 150);
+}
+
 export async function deleteWorkItem(id: Guid): Promise<{ deletedIds: Guid[] }> {
   return mutate(() => {
     const item = seedWorkItems.find((w) => w.id === id);

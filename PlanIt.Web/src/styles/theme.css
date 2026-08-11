@@ -91,9 +91,10 @@ a {
 }
 
 .app-shell {
-  min-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .topbar {
@@ -123,6 +124,18 @@ a {
   max-width: 720px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-4) var(--space-8);
+  overflow-y: auto;
+}
+
+/* The board manages its own vertical scroll per column instead of the whole
+   page scrolling, so it can fill the viewport like Trello/Azure DevOps boards. */
+.page-board {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  margin: 0;
+  overflow: hidden;
+  padding-bottom: var(--space-4);
 }
 
 .page-header {
@@ -479,8 +492,9 @@ a {
   display: flex;
   gap: var(--space-4);
   overflow-x: auto;
-  padding-bottom: var(--space-4);
   scroll-snap-type: x proximity;
+  flex: 1;
+  min-height: 0;
 }
 
 .board-column {
@@ -492,6 +506,13 @@ a {
   background: rgba(23, 25, 35, 0.02);
   border-radius: var(--radius-md);
   min-height: 200px;
+}
+
+@media (min-width: 900px) {
+  .board-column {
+    flex: 0 0 560px;
+    max-width: 560px;
+  }
 }
 
 .board-column-header {
@@ -520,11 +541,20 @@ a {
 }
 
 .board-column-body {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
   gap: var(--space-3);
   padding: 0 var(--space-3) var(--space-3);
+  flex: 1;
   min-height: 60px;
+  overflow-y: auto;
+}
+
+@media (min-width: 900px) {
+  .board-column-body {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .work-item-card {
@@ -575,6 +605,12 @@ a {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+.chaos-toggle {
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
 }
 
 .row-between {

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useProjectBoardQuery, useProjectMembersQuery } from "../../hooks/queries";
-import { useUpdateWorkItemStatusMutation } from "../../hooks/mutations";
+import { useUpdateWorkItemStatusMutation, useReorderWorkItemsMutation } from "../../hooks/mutations";
 import { Board } from "./Board";
 import { CreateWorkItemModal } from "../workitems/CreateWorkItemModal";
 import { CollaboratorsModal } from "./CollaboratorsModal";
 import { setLastProjectId } from "./lastProject";
-import { isChaosMode, setChaosMode } from "../../api/mockClient";
 import { MapIcon } from "../../components/icons";
+import { statusLabel } from "../workitems/WorkItemForm";
 import type { Guid, User, WorkItem, WorkItemStatus } from "../../types/domain";
 
 export function ProjectBoardPage() {
@@ -16,12 +16,13 @@ export function ProjectBoardPage() {
   const boardQuery = useProjectBoardQuery(projectId);
   const membersQuery = useProjectMembersQuery(projectId);
   const updateStatus = useUpdateWorkItemStatusMutation(projectId as Guid);
+  const reorder = useReorderWorkItemsMutation(projectId as Guid);
 
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | "unassigned" | Guid>("all");
   const [creating, setCreating] = useState(false);
   const [managingCollaborators, setManagingCollaborators] = useState(false);
-  const [chaos, setChaos] = useState(isChaosMode());
   const [celebration, setCelebration] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (projectId) setLastProjectId(projectId);
@@ -32,6 +33,12 @@ export function ProjectBoardPage() {
     const timer = setTimeout(() => setCelebration(null), 2600);
     return () => clearTimeout(timer);
   }, [celebration]);
+
+  useEffect(() => {
+    if (!saveError) return;
+    const timer = setTimeout(() => setSaveError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [saveError]);
 
   const usersById = useMemo(() => {
     const map = new Map<Guid, User>();
@@ -74,10 +81,29 @@ export function ProjectBoardPage() {
   }
 
   function handleStatusChange(item: WorkItem, newStatus: WorkItemStatus) {
-    updateStatus.mutate({ id: item.id, status: newStatus });
-    if (newStatus === "Completed") {
-      setCelebration(`Nice work — "${item.title}" is complete.`);
-    }
+    updateStatus.mutate(
+      { id: item.id, status: newStatus },
+      {
+        onSuccess: () => {
+          if (newStatus === "Completed") {
+            setCelebration(`Nice work — "${item.title}" is complete.`);
+          }
+        },
+        onError: (err) => {
+          setSaveError(
+            `Couldn't move "${item.title}" to ${statusLabel(newStatus)} — ${(err as Error).message}`,
+          );
+        },
+      },
+    );
+  }
+
+  function handleReorder(orderedIds: Guid[]) {
+    reorder.mutate(orderedIds, {
+      onError: (err) => {
+        setSaveError(`Couldn't save the new order — ${(err as Error).message}`);
+      },
+    });
   }
 
   if (boardQuery.isLoading) {
@@ -105,7 +131,7 @@ export function ProjectBoardPage() {
   const members = membersQuery.data ?? [];
 
   return (
-    <div className="page" style={{ maxWidth: "none", margin: 0 }}>
+    <div className="page page-board">
       <div className="page-header">
         <div>
           <div className="row" style={{ gap: "var(--space-2)" }}>
@@ -141,6 +167,12 @@ export function ProjectBoardPage() {
         </div>
       )}
 
+      {saveError && (
+        <div className="error-state" style={{ marginBottom: "var(--space-4)", textAlign: "left" }}>
+          <p>{saveError}</p>
+        </div>
+      )}
+
       {topLevelItems.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">✨</div>
@@ -157,20 +189,9 @@ export function ProjectBoardPage() {
           subtaskProgressOf={subtaskProgressOf}
           onOpenItem={handleOpenItem}
           onStatusChange={handleStatusChange}
+          onReorder={handleReorder}
         />
       )}
-
-      <label className="row" style={{ marginTop: "var(--space-5)", fontSize: "var(--font-size-sm)" }} title="Forces the next drag-and-drop update to fail, so you can see the optimistic update revert.">
-        <input
-          type="checkbox"
-          checked={chaos}
-          onChange={(e) => {
-            setChaos(e.target.checked);
-            setChaosMode(e.target.checked);
-          }}
-        />
-        <span className="muted">Simulate network failure (for testing drag revert)</span>
-      </label>
 
       {topLevelItems.length > 0 && (
         <button type="button" className="fab" onClick={() => setCreating(true)} aria-label="Add work item">

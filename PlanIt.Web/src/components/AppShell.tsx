@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../auth/useAuth";
 import { clearSession } from "../auth/authStore";
+import { isChaosMode, setChaosMode } from "../api/mockClient";
 import { initials } from "./initials";
 
 export function AppShell() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [chaos, setChaos] = useState(isChaosMode());
 
   function handleLogout() {
     clearSession();
@@ -18,8 +21,24 @@ export function AppShell() {
         <Link to="/" className="topbar-title" style={{ textDecoration: "none" }}>
           PlanIt
         </Link>
+
         {user && (
           <div className="row">
+            <label
+              className="row chaos-toggle"
+              title="Forces the next save (drag, edit, delete, reorder…) to fail, so you can see error handling and optimistic-update revert."
+            >
+              <input
+                type="checkbox"
+                checked={chaos}
+                onChange={(e) => {
+                  setChaos(e.target.checked);
+                  setChaosMode(e.target.checked);
+                }}
+              />
+              <span className="muted">Simulate failure</span>
+            </label>
+
             <span className="avatar avatar-sm" title={user.username}>
               {initials(user.username)}
             </span>

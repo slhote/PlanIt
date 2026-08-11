@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createWorkItem, updateWorkItem, deleteWorkItem } from "../api/workItems";
+import { createWorkItem, updateWorkItem, deleteWorkItem, reorderWorkItems } from "../api/workItems";
 import type { CreateWorkItemInput, UpdateWorkItemInput } from "../api/workItems";
 import { createProject, type ProjectBoard, type CreateProjectInput } from "../api/projects";
 import { addProjectMember, removeProjectMember } from "../api/projectMembers";
@@ -51,6 +51,17 @@ export function useUpdateWorkItemStatusMutation(projectId: Guid) {
       }
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+}
+
+/** Used by drag-and-drop reordering within/across columns. Board owns the optimistic visual order itself (via local state), so this just persists it and re-syncs from the server truth on failure. */
+export function useReorderWorkItemsMutation(projectId: Guid) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: Guid[]) => reorderWorkItems(orderedIds),
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
   });
