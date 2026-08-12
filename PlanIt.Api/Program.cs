@@ -45,6 +45,7 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ProjectService>();
 builder.Services.AddScoped<WorkItemService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ProjectMemberService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserAccessor, ClaimsCurrentUserAccessor>();
