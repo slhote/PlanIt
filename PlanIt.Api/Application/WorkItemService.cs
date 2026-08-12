@@ -1,4 +1,6 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using PlanIt.Api.Application.Realtime;
 using PlanIt.Api.Contracts.WorkItems;
 using PlanIt.Api.Data;
 using PlanIt.Api.Domain.Entities;
@@ -7,7 +9,7 @@ using PlanIt.Api.Domain.Repositories;
 
 namespace PlanIt.Api.Application;
 
-public class WorkItemService(IWorkItemRepository workItemRepository, IUserRepository userRepository, PlanItDbContext db)
+public class WorkItemService(IWorkItemRepository workItemRepository, IUserRepository userRepository, PlanItDbContext db, IMediator mediator)
 {
     private const int MaxTags = 3;
     private const double OrderGap = 1024;
@@ -38,7 +40,7 @@ public class WorkItemService(IWorkItemRepository workItemRepository, IUserReposi
     // Client-generated GUID id, server upsert: a retried create with the same Id is a no-op
     // returning the already-created item, not a second insert or a validation re-run (master
     // plan's idempotent-create decision).
-    public async Task<WorkItemDto> CreateAsync(Guid projectId, CreateWorkItemRequest request)
+    public async Task<WorkItemDto> CreateAsync(Guid projectId, CreateWorkItemRequest request, string? originConnectionId = null)
     {
         var existing = await workItemRepository.GetByIdAsync(request.Id);
         if (existing is not null)
@@ -86,10 +88,13 @@ public class WorkItemService(IWorkItemRepository workItemRepository, IUserReposi
         workItemRepository.Add(workItem);
         await db.SaveChangesAsync();
 
-        return WorkItemMapper.ToDto(workItem, db);
+        var dto = WorkItemMapper.ToDto(workItem, db);
+        await mediator.Publish(new WorkItemCreatedNotification(dto, originConnectionId));
+
+        return dto;
     }
 
-    public async Task<WorkItemDto> UpdateAsync(Guid id, UpdateWorkItemRequest request)
+    public async Task<WorkItemDto> UpdateAsync(Guid id, UpdateWorkItemRequest request, string? originConnectionId = null)
     {
         var workItem = await workItemRepository.GetByIdAsync(id)
             ?? throw new TaskNotFoundException($"Work item {id} not found.");
@@ -128,20 +133,23 @@ public class WorkItemService(IWorkItemRepository workItemRepository, IUserReposi
             workItem.Tags = NormalizeTags(request.Tags);
         }
 
-        if (request.Order is { } order)
+        var orderChanged = request.Order is { } order && order != workItem.Order;
+        if (request.Order is { } newOrder)
         {
-            workItem.Order = order;
+            workItem.Order = newOrder;
         }
 
-        if (request.Status is { } newStatus && newStatus != workItem.Status)
+        var oldStatus = workItem.Status;
+        var statusChanged = request.Status is { } newStatus && newStatus != workItem.Status;
+        if (statusChanged)
         {
-            workItem.Status = newStatus;
+            workItem.Status = request.Status!.Value;
 
             // Completion cascade: completing a Feature completes its Tasks too. The reverse never
             // cascades (un-completing a parent doesn't touch already-done children). Tasks have no
             // children, so there's nothing to cascade from a Task's own status change
             // (planit-api-contracts-backend.md §3).
-            if (workItem.WorkItemType == WorkItemType.Feature && newStatus == WorkItemStatus.Completed)
+            if (workItem.WorkItemType == WorkItemType.Feature && workItem.Status == WorkItemStatus.Completed)
             {
                 var children = await workItemRepository.GetChildrenAsync(workItem.Id);
                 foreach (var child in children)
@@ -151,6 +159,9 @@ public class WorkItemService(IWorkItemRepository workItemRepository, IUserReposi
                 }
             }
         }
+
+        var otherFieldChanged = request.Title is not null || request.Description is not null
+            || request.AssigneeId is not null || request.Tags is not null;
 
         workItem.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -163,17 +174,35 @@ public class WorkItemService(IWorkItemRepository workItemRepository, IUserReposi
             throw new ConcurrencyConflictException($"Work item {id} was modified concurrently; reload and try again.", ex);
         }
 
+        // Structural events (status/position) carry enough payload for an immediate board update;
+        // a plain field edit (title/description/tags/assignee) gets the lightweight
+        // invalidate-and-refetch ping instead. Not stacked — a drag that also crosses a status
+        // column fires StatusChanged, not both StatusChanged and Moved.
+        if (statusChanged)
+        {
+            await mediator.Publish(new WorkItemStatusChangedNotification(workItem.ProjectId, workItem.Id, oldStatus, workItem.Status, originConnectionId));
+        }
+        else if (orderChanged)
+        {
+            await mediator.Publish(new WorkItemMovedNotification(workItem.ProjectId, workItem.Id, workItem.ParentId, workItem.Status, workItem.Order, originConnectionId));
+        }
+        else if (otherFieldChanged)
+        {
+            await mediator.Publish(new WorkItemUpdatedNotification(workItem.ProjectId, workItem.Id, originConnectionId));
+        }
+
         return WorkItemMapper.ToDto(workItem, db);
     }
 
     // Deleting a Feature deletes its child Tasks too (DB FK cascade is defense-in-depth; this is
     // the primary path so the response can report every id that was actually removed). Deleting a
     // Task is always a single-row delete (planit-api-contracts-backend.md §3).
-    public async Task<DeleteWorkItemResponse> DeleteAsync(Guid id)
+    public async Task<DeleteWorkItemResponse> DeleteAsync(Guid id, string? originConnectionId = null)
     {
         var workItem = await workItemRepository.GetByIdAsync(id)
             ?? throw new TaskNotFoundException($"Work item {id} not found.");
 
+        var projectId = workItem.ProjectId;
         var deletedIds = new List<Guid> { id };
 
         if (workItem.WorkItemType == WorkItemType.Feature)
@@ -188,6 +217,8 @@ public class WorkItemService(IWorkItemRepository workItemRepository, IUserReposi
 
         workItemRepository.Remove(workItem);
         await db.SaveChangesAsync();
+
+        await mediator.Publish(new WorkItemDeletedNotification(projectId, deletedIds, originConnectionId));
 
         return new DeleteWorkItemResponse(deletedIds);
     }
