@@ -13,11 +13,13 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid id) =>
         _db.Users.FirstOrDefaultAsync(u => u.Id == id);
 
+    // Username/Email are normalized to lowercase on write (see User.cs's setters), so lookups
+    // must normalize the search value the same way, or a case-different match silently misses.
     public Task<User?> GetByUsernameAsync(string username) =>
-        _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+        _db.Users.FirstOrDefaultAsync(u => u.Username == username.ToLowerInvariant());
 
     public Task<User?> GetByEmailAsync(string email) =>
-        _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        _db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant());
 
     public async Task<IReadOnlyList<User>> SearchAsync(string term, int take = 20) =>
         await _db.Users

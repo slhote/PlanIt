@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -8,6 +9,7 @@ using PlanIt.Api.Application;
 using PlanIt.Api.Application.Auth;
 using PlanIt.Api.Data;
 using PlanIt.Api.Data.Repositories;
+using PlanIt.Api.Domain.Entities;
 using PlanIt.Api.Domain.Repositories;
 using PlanIt.Api.ExceptionHandling;
 using PlanIt.Api.HealthChecks;
@@ -39,10 +41,17 @@ builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ProjectService>();
 builder.Services.AddScoped<WorkItemService>();
+builder.Services.AddScoped<AuthService>();
 
 // TEMPORARY (planit-api-contracts-backend.md §8 step 1) — swap for a claims-based accessor once
-// real auth (step 2/3) lands.
+// [Authorize] is turned on for real (step 3).
 builder.Services.AddScoped<ICurrentUserAccessor, TemporaryCurrentUserAccessor>();
+
+// PasswordHasher<T> (Microsoft.AspNetCore.Identity, part of the ASP.NET Core shared framework —
+// no extra package needed): PBKDF2 with adaptive iteration counts, versioned hash format. Chosen
+// over BCrypt.Net-Next since it adds no new dependency (planit-api-contracts-backend.md §4).
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 builder.Services.AddOptions<CorsOptions>()
     .Bind(builder.Configuration.GetSection(CorsOptions.SectionName))
@@ -98,6 +107,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddExceptionHandler<TaskNotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddExceptionHandler<InvalidCredentialsExceptionHandler>();
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
