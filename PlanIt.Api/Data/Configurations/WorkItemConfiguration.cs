@@ -15,6 +15,7 @@ public class WorkItemConfiguration : IEntityTypeConfiguration<WorkItem>
         builder.Property(w => w.Title).HasMaxLength(200).IsRequired();
         builder.Property(w => w.Description).HasMaxLength(4000);
         builder.Property(w => w.Status).IsRequired();
+        builder.Property(w => w.Order).IsRequired();
 
         // Native Postgres text[], not a junction table — per-project scoped, no global Tag
         // entity, max 3, case-insensitive matching via lowercase-at-write (application layer).
