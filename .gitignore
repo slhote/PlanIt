@@ -10,6 +10,10 @@ dist/
 dist-ssr/
 *.local
 
+# Playwright UI verification screenshots
+PlanIt.Web/.playwright-screenshots/
+PlanIt.Web/.playwright-baselines/
+
 # Env / secrets
 .env
 .env.*
