@@ -14,6 +14,12 @@ public class WorkItem
     public WorkItemStatus Status { get; set; }
     public Guid? AssigneeId { get; set; }
 
+    // Fractional-index sort key, meaningful only within a (ProjectId, ParentId, Status) group —
+    // one drag-and-drop column of one board view. A single-item move is a single-row update: new
+    // Order = midpoint of its two new neighbors, no sibling renumbering
+    // (planit-api-contracts-backend.md §6).
+    public double Order { get; set; }
+
     // Native Postgres text[], per-project scoped, max 3, case-insensitive (stored lowercased).
     public List<string> Tags { get; set; } = new();
 

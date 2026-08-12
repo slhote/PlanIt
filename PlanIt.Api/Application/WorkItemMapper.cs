@@ -19,6 +19,7 @@ internal static class WorkItemMapper
         workItem.Status,
         workItem.AssigneeId,
         workItem.Tags,
+        workItem.Order,
         workItem.CreatedAt,
         workItem.UpdatedAt,
         db.Entry(workItem).Property<uint>("xmin").CurrentValue);
