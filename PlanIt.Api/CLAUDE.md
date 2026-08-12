@@ -6,8 +6,7 @@ This file provides guidance to Claude Code when working with code in `PlanIt.Api
 2. [`planit-system-design-architecture.md`](../.claude/docs/plans/planit-system-design-architecture.md) — DB engine (confirmed: PostgreSQL), SignalR hub design, CORS/auth-handshake, error handling, secrets/JWT signing, observability, versioning, layering.
 3. [`planit-persistence-data-model.md`](../.claude/docs/plans/planit-persistence-data-model.md) — the actual EF Core entity schema (`User`, `Project`, `ProjectMember`, `WorkItem`, `RefreshToken`), constraints, migration strategy — the *what*.
 4. [`planit-persistence-wiring.md`](../.claude/docs/plans/planit-persistence-wiring.md) — the *how*: repository pattern (one interface per aggregate root, not generic), project structure (`Domain/` vs `Data/`), `DbContext` scoped lifetime (no Unit-of-Work wrapper needed), and the testing split (Moq against repository interfaces for service logic, Testcontainers-backed real Postgres for repository implementations — never mock `DbContext` directly).
-
-**Subplan "API Contracts & Backend" (endpoint URLs, exact DTO shapes/casing, HTTP verbs per route) has not been written yet.** Don't invent specific endpoint contracts as if they were decided; the subplans above cover architecture, schema, and persistence wiring, not the wire format. The persistence wiring in #4 doesn't need to wait for it, though — the schema has nothing left open, so that layer can be built and tested standalone.
+5. [`planit-api-contracts-backend.md`](../.claude/docs/plans/planit-api-contracts-backend.md) — endpoint URLs, DTO shapes, service layer, auth (password hashing, JWT minting, refresh rotation), SignalR hub design (MediatR-based event dispatch), the `WorkItem.Order` column resolving the reorder/position gap, and policy-based access control (`[Authorize(Policy = "ProjectMember")]` + a custom 403→404 rewrite). **Design only — no code implementation has landed from this doc yet**; see its §8 for build sequencing.
 
 ## Current State: unmodified `dotnet new webapi` scaffold
 
@@ -80,7 +79,8 @@ Moq is intended for narrow, leaf-level collaborator mocking once real domain cod
 ### Genuinely still open (per the master plan's own list)
 
 - Whether a completed Feature/Task's status change should auto-cascade in cases beyond the one already decided above — the *completion* cascade direction is settled; anything else status-related not covered above is not.
-- Exact REST endpoint URLs/verbs/DTO field casing — no API Contracts subplan has been written yet; don't invent one and present it as decided.
+
+REST endpoint URLs/verbs/DTO field casing are now decided — see [`planit-api-contracts-backend.md`](../.claude/docs/plans/planit-api-contracts-backend.md) (doc #5 above). Design only; no controllers/DTOs/auth/SignalR code exists yet.
 
 When implementing any of the above, build it against these subplans' decisions rather than improvising a different shape — if a decision needed isn't covered here or in the subplans, stop and ask rather than assuming.
 
