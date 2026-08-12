@@ -6,6 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 using PlanIt.Api.Data;
 using PlanIt.Api.Data.Repositories;
 using PlanIt.Api.Domain.Repositories;
+using PlanIt.Api.ExceptionHandling;
+using PlanIt.Api.HealthChecks;
 using PlanIt.Api.Startup.Options;
 using PlanIt.Api.Startup.Validation;
 
@@ -75,7 +77,34 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Global exception handling via IExceptionHandler classes (planit-system-design-architecture.md
+// §6). Typed handlers run in registration order; each returns false if the exception isn't its
+// type, falling through to the next. Anything none of them catch gets a generic 500
+// ProblemDetails from AddProblemDetails() below.
+builder.Services.AddExceptionHandler<TaskNotFoundExceptionHandler>();
+builder.Services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
+builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        // Stack traces hidden in production, shown in development (System Design §6).
+        if (builder.Environment.IsDevelopment() && context.Exception is not null)
+        {
+            context.ProblemDetails.Extensions["exception"] = context.Exception.ToString();
+        }
+    };
+});
+
+// Single GET /health endpoint confirming the API is up and the DB is reachable, for Azure
+// deployment health probes (planit-system-design-architecture.md §8).
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database");
+
 var app = builder.Build();
+
+// Exception handling first, so it can catch anything thrown by later middleware.
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -91,5 +120,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
+
+// Exposed for WebApplicationFactory<Program> in PlanIt.Api.Tests.
+public partial class Program
+{
+}
