@@ -1,12 +1,13 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with code in `PlanIt.Api`. See the [repo-root CLAUDE.md](../CLAUDE.md) for shared commands and cross-project context. The architecture decisions referenced throughout this file come from three subplans under `.claude/docs/plans/`, in order of authority (later ones supersede earlier ones where they overlap — e.g. the master plan's DB engine placeholder was superseded by System Design's actual choice):
+This file provides guidance to Claude Code when working with code in `PlanIt.Api`. See the [repo-root CLAUDE.md](../CLAUDE.md) for shared commands and cross-project context. The architecture decisions referenced throughout this file come from four subplans under `.claude/docs/plans/`, in order of authority (later ones supersede earlier ones where they overlap — e.g. the master plan's DB engine placeholder was superseded by System Design's actual choice):
 
 1. [`planit-master-plan.md`](../.claude/docs/plans/planit-master-plan.md) — top-level binding decisions (idempotency, auth model shape, cascade-delete rule, hierarchy/routing shape). **Its "deferred" DB-engine line is stale** — see #2.
 2. [`planit-system-design-architecture.md`](../.claude/docs/plans/planit-system-design-architecture.md) — DB engine (confirmed: PostgreSQL), SignalR hub design, CORS/auth-handshake, error handling, secrets/JWT signing, observability, versioning, layering.
-3. [`planit-persistence-data-model.md`](../.claude/docs/plans/planit-persistence-data-model.md) — the actual EF Core entity schema (`User`, `Project`, `ProjectMember`, `WorkItem`, `RefreshToken`), constraints, migration strategy.
+3. [`planit-persistence-data-model.md`](../.claude/docs/plans/planit-persistence-data-model.md) — the actual EF Core entity schema (`User`, `Project`, `ProjectMember`, `WorkItem`, `RefreshToken`), constraints, migration strategy — the *what*.
+4. [`planit-persistence-wiring.md`](../.claude/docs/plans/planit-persistence-wiring.md) — the *how*: repository pattern (one interface per aggregate root, not generic), project structure (`Domain/` vs `Data/`), `DbContext` scoped lifetime (no Unit-of-Work wrapper needed), and the testing split (Moq against repository interfaces for service logic, Testcontainers-backed real Postgres for repository implementations — never mock `DbContext` directly).
 
-**Subplan 3 (API Contracts & Backend — endpoint URLs, exact DTO shapes/casing, HTTP verbs per route) has not been written yet.** Don't invent specific endpoint contracts as if they were decided; the two subplans above cover architecture and schema, not the wire format.
+**Subplan "API Contracts & Backend" (endpoint URLs, exact DTO shapes/casing, HTTP verbs per route) has not been written yet.** Don't invent specific endpoint contracts as if they were decided; the subplans above cover architecture, schema, and persistence wiring, not the wire format. The persistence wiring in #4 doesn't need to wait for it, though — the schema has nothing left open, so that layer can be built and tested standalone.
 
 ## Current State: unmodified `dotnet new webapi` scaffold
 
