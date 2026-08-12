@@ -1,13 +1,26 @@
-# Local dev only. The database service is intentionally omitted here —
-# the persistence subplan (.claude/docs/plans/) hasn't picked an engine yet.
-# Add a db service once that's decided, and point PlanIt.Api's connection
-# string at it via an environment variable / user secret.
 services:
-  api:
-    build:
-      context: .
-      dockerfile: PlanIt.Api/Dockerfile
-    ports:
-      - "8080:8080"
+  postgres:
+    image: postgres:16
+    container_name: planit-postgres
+    restart: unless-stopped
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      POSTGRES_DB: PlanIt
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - planit-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d PlanIt"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  planit-postgres-data:
+
+# PlanIt.Api is not containerized yet (no Dockerfile) — DevOps/Hosting subplan's job.
+# Once that exists, add an `api` service here that depends_on postgres with
+# `condition: service_healthy`, using the same PlanIt/postgres/postgres credentials
+# as PlanIt.Api/appsettings.Development.json's DefaultConnection.
