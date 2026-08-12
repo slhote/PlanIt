@@ -14,7 +14,7 @@ This document is the top-level plan. It exists to (a) capture the cross-cutting 
 4. **Work item assignment**: single nullable assignee per work item (no many-to-many join table). Unassigned = null.
 5. **Cascade delete**: deleting a Feature deletes all of its child Tasks. The frontend must confirm with an explicit count ("this will also delete N tasks") before committing the delete. Tasks have no children, so deleting a Task is always a simple, single-row delete.
 6. **Work item hierarchy**: a Project can contain Features and/or Tasks directly; a Feature can contain Tasks; Tasks have no children. Routing: `project/{projectId}`, `project/{projectId}/feature/{featureId}`, `project/{projectId}/task/{taskId}`, `project/{projectId}/feature/{featureId}/task/{taskId}`.
-7. **Database engine**: **deferred** — the persistence subplan will lay out PostgreSQL (Azure Database for PostgreSQL Flexible Server) vs Azure SQL Database vs Cosmos DB with concrete trade-offs and make/confirm the call there. Working assumption for planning purposes only: relational (Postgres or Azure SQL), since the domain is a strict tree and maps cleanly to foreign keys — Cosmos would be a bigger modeling detour. Docker is fine for **local dev** DB regardless of engine; production should use the managed Azure service, not a DB-in-a-container, for durability/backup. **This decision must also weigh vector-search support** — see the Similar Tasks Suggestions feature below; if embeddings end up justified, `pgvector` on Postgres is the most direct path, Cosmos DB has native vector search, Azure SQL has no native answer here.
+7. **Database engine**: ~~deferred~~ **RESOLVED 2026-08-11 in [`planit-system-design-architecture.md`](planit-system-design-architecture.md) §2: PostgreSQL** (Azure Database for PostgreSQL Flexible Server in prod, matching engine/version in local Docker). Decisive factors: native `xmin` optimistic-concurrency support, and `pgvector` keeping the door open for the Similar Tasks Suggestions feature's future embeddings work without a second vector-store integration. This line originally said "deferred" while planning was still in progress — left here for history, but treat the resolution above as current, not this paragraph's original framing. Full schema is in [`planit-persistence-data-model.md`](planit-persistence-data-model.md).
 
 ## Deferred / advanced topics (not baseline scope, revisit later)
 
@@ -24,12 +24,13 @@ This document is the top-level plan. It exists to (a) capture the cross-cutting 
 
 ## Open items each subplan must still resolve
 
-These weren't blocking enough to decide right now, but each owning subplan must make an explicit call (not leave implicit):
-- Drag-and-drop library (lean: `dnd-kit`, since `react-beautiful-dnd` is unmaintained) — Frontend subplan.
-- GitHub Pages SPA routing fallback (404.html redirect trick vs hash routing) for deep-linkable routes like `project/{id}/feature/{id}` — Frontend subplan.
-- Whether a completed Feature/Task auto-cascades status to children, or status is purely independent per item — Persistence + API subplan.
-- Unauthorized project access: confirm plan is "404, not 403" (don't leak existence of a project the user can't see) vs an explicit "access denied" page as originally described — API + Frontend subplans should agree on this together.
-- Whether Tags/Labels exist as a first-class WorkItem concept (currently absent from the schema entirely) — needed as the cheap metadata-similarity baseline for Similar Tasks Suggestions (see subplan 8), so this must be decided in Persistence, not bolted on later.
+These weren't blocking enough to decide right now at the time this master plan was written, but each owning subplan had to make an explicit call. **All five below are now resolved** — kept here as a historical record of what was open at Phase 0's start, not as a list of things still to decide. Check the linked subplan for the actual answer rather than treating anything in this section as still open.
+
+- ~~Drag-and-drop library~~ — **RESOLVED** in [`planit-frontend-scaffolding.md`](planit-frontend-scaffolding.md): `dnd-kit` (`react-beautiful-dnd` is unmaintained; rejected `react-dnd` for poor native touch support and Atlassian's `pragmatic-drag-and-drop` for lacking React-specific hooks).
+- ~~GitHub Pages SPA routing fallback~~ — **RESOLVED** in [`planit-frontend-scaffolding.md`](planit-frontend-scaffolding.md): the `404.html` redirect trick (`rafgraph/spa-github-pages` pattern), chosen over hash-based routing for clean path-based URLs. Not yet implemented in code as of this writing.
+- ~~Whether a completed Feature/Task auto-cascades status to children~~ — **RESOLVED** in [`planit-system-design-architecture.md`](planit-system-design-architecture.md) §3: completion cascades down to children (marking a Feature complete completes its Tasks too), but never cascades back up on reversal (un-completing a parent doesn't un-complete already-done children). Intentional asymmetry.
+- ~~Unauthorized project access: 404 vs 403~~ — **RESOLVED** in [`planit-system-design-architecture.md`](planit-system-design-architecture.md) §4: 404, not 403 — avoids leaking a project's existence to non-members.
+- ~~Whether Tags/Labels exist as a first-class WorkItem concept~~ — **RESOLVED** in [`planit-persistence-data-model.md`](planit-persistence-data-model.md): yes, but as a native Postgres `text[]` column directly on `WorkItem` (not a junction table/global Tag entity) — per-project scoped, max 3 tags, `CHECK (cardinality(tags) <= 3)`, case-insensitive matching via lowercase-at-write.
 
 ## Groundwork feature: Similar Tasks Suggestions
 
