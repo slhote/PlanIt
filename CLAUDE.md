@@ -52,8 +52,8 @@ dotnet test
 **Multi-step work (a subplan, a multi-session feature) does not merge to `main` piecemeal.** PRs #8–12 did — five short-lived branches, each merged straight to `main` individually within 25 minutes, no combined review point — and that's the anti-pattern to avoid going forward, not a precedent to repeat.
 
 For any unit of work that spans more than one PR-sized change:
-- Cut an integration branch off `main` for the whole unit of work (e.g. `feature/<subplan-name>`).
-- Sub-steps branch off the *current tip of* the integration branch (never off `main`, never off another still-open sub-branch) and PR into the integration branch, not `main`.
+- Cut an integration branch off `main` for the whole unit of work (e.g. `integration/<name>`). Keep it out of the `feature/` prefix used by sub-step branches below — git refs are path-like, so a branch named `feature/<name>` can't coexist with `feature/<name>/01-...` (a ref can't be both a leaf and a directory in the same namespace).
+- Sub-steps branch off the *current tip of* the integration branch (never off `main`, never off another still-open sub-branch), named `feature/<name>/<step>`, and PR into the integration branch, not `main`.
 - Dependent sub-steps branch only after their prerequisite has already merged into the integration branch — dependencies resolve through the integration branch, never branch-to-branch.
 - Exactly one PR takes the integration branch to `main`, once the whole unit of work (or an agreed, coherent milestone within it) is ready. That is the review gate — nothing else merges to `main` for that unit of work outside it.
 - If `main` moves in the meantime, rebase the integration branch onto `main`; don't merge `main` into it.
