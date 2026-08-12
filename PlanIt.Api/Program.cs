@@ -15,6 +15,7 @@ using PlanIt.Api.Domain.Entities;
 using PlanIt.Api.Domain.Repositories;
 using PlanIt.Api.ExceptionHandling;
 using PlanIt.Api.HealthChecks;
+using PlanIt.Api.Hubs;
 using PlanIt.Api.Startup.Options;
 using PlanIt.Api.Startup.Validation;
 
@@ -54,6 +55,22 @@ builder.Services.AddScoped<ICurrentUserAccessor, ClaimsCurrentUserAccessor>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
+builder.Services.AddSignalR()
+    // SignalR's hub protocol has its own JsonSerializerOptions, separate from the one
+    // AddControllers().AddJsonOptions() configures for REST responses above — without this,
+    // enums broadcast over the hub come through as numbers (0, 1, ...) while the REST API sends
+    // them as strings ("ToDo", "InProgress", ...), breaking the assumption that both share one
+    // wire format.
+    .AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Chosen deliberately over direct IRealtimeNotifier injection, despite today's 1-consumer-
+// per-event reality: a second consumer (audit log, cache invalidation) becomes a new handler
+// class with zero changes to the publishing service, and IPipelineBehavior is a documented seam
+// for later cross-cutting concerns (planit-api-contracts-backend.md §5). MediatR moved to a
+// commercial license at v13 for commercial use above a revenue threshold — fine for this
+// portfolio/non-commercial project, worth revisiting if that ever changes.
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+
 builder.Services.AddOptions<CorsOptions>()
     .Bind(builder.Configuration.GetSection(CorsOptions.SectionName))
     .ValidateOnStart();
@@ -87,6 +104,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
             ClockSkew = TimeSpan.Zero,
+        };
+
+        // SignalR's WebSocket upgrade can't set an Authorization header, so the token travels as
+        // an "access_token" query-string param instead (planit-api-contracts-backend.md §5) — the
+        // standard pattern for this, scoped to only the hub path so it doesn't weaken normal
+        // Bearer-header validation for REST calls.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
         };
     });
 
@@ -162,6 +196,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapHub<PlanItHub>("/hub");
 
 app.Run();
 

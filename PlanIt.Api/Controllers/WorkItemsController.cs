@@ -5,6 +5,9 @@ using PlanIt.Api.Contracts.WorkItems;
 
 namespace PlanIt.Api.Controllers;
 
+// X-SignalR-Connection-Id: the frontend's current SignalR connection, so its own SignalR
+// broadcast can exclude the client that made the REST call (planit-api-contracts-backend.md §5).
+// Optional — absent when the caller has no live SignalR connection yet.
 [ApiController]
 [Route("projects/{projectId:guid}/workitems")]
 [Authorize(Policy = "ProjectMember")]
@@ -19,17 +22,27 @@ public class WorkItemsController(WorkItemService workItemService) : ControllerBa
         Ok(await workItemService.GetFeatureDetailAsync(id));
 
     [HttpPost]
-    public async Task<ActionResult<WorkItemDto>> Create(Guid projectId, CreateWorkItemRequest request)
+    public async Task<ActionResult<WorkItemDto>> Create(
+        Guid projectId,
+        CreateWorkItemRequest request,
+        [FromHeader(Name = "X-SignalR-Connection-Id")] string? originConnectionId = null)
     {
-        var workItem = await workItemService.CreateAsync(projectId, request);
+        var workItem = await workItemService.CreateAsync(projectId, request, originConnectionId);
         return StatusCode(StatusCodes.Status201Created, workItem);
     }
 
     [HttpPatch("{id:guid}")]
-    public async Task<ActionResult<WorkItemDto>> Update(Guid projectId, Guid id, UpdateWorkItemRequest request) =>
-        Ok(await workItemService.UpdateAsync(id, request));
+    public async Task<ActionResult<WorkItemDto>> Update(
+        Guid projectId,
+        Guid id,
+        UpdateWorkItemRequest request,
+        [FromHeader(Name = "X-SignalR-Connection-Id")] string? originConnectionId = null) =>
+        Ok(await workItemService.UpdateAsync(id, request, originConnectionId));
 
     [HttpDelete("{id:guid}")]
-    public async Task<ActionResult<DeleteWorkItemResponse>> Delete(Guid projectId, Guid id) =>
-        Ok(await workItemService.DeleteAsync(id));
+    public async Task<ActionResult<DeleteWorkItemResponse>> Delete(
+        Guid projectId,
+        Guid id,
+        [FromHeader(Name = "X-SignalR-Connection-Id")] string? originConnectionId = null) =>
+        Ok(await workItemService.DeleteAsync(id, originConnectionId));
 }
