@@ -45,4 +45,10 @@ public class WorkItemsController(WorkItemService workItemService) : ControllerBa
         Guid id,
         [FromHeader(Name = "X-SignalR-Connection-Id")] string? originConnectionId = null) =>
         Ok(await workItemService.DeleteAsync(id, originConnectionId));
+
+    // Route locked now so the URL contract is stable; implementation is subplan 8 (Similar Tasks
+    // Suggestions), sequenced after Tags/Labels and seed data exist (planit-api-contracts-backend.md §8).
+    [HttpGet("{id:guid}/similar-tasks")]
+    public IActionResult GetSimilarTasks(Guid projectId, Guid id) =>
+        StatusCode(StatusCodes.Status501NotImplemented);
 }
