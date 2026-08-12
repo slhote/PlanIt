@@ -15,6 +15,13 @@ public class ProjectsController(ProjectService projectService, ICurrentUserAcces
     public async Task<ActionResult<IReadOnlyList<ProjectDto>>> GetMyProjects() =>
         Ok(await projectService.GetForUserAsync(currentUser.UserId));
 
+    [HttpPost]
+    public async Task<ActionResult<ProjectDto>> Create(CreateProjectRequest request)
+    {
+        var project = await projectService.CreateAsync(request, currentUser.UserId);
+        return StatusCode(StatusCodes.Status201Created, project);
+    }
+
     // ProjectMember policy gates this to members only, 404 (not 403) for everyone else
     // (planit-api-contracts-backend.md §7).
     [HttpGet("{projectId:guid}")]
