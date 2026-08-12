@@ -1,8 +1,11 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using PlanIt.Api.Application;
+using PlanIt.Api.Application.Auth;
 using PlanIt.Api.Data;
 using PlanIt.Api.Data.Repositories;
 using PlanIt.Api.Domain.Repositories;
@@ -17,7 +20,10 @@ const string FrontendCorsPolicy = "Frontend";
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    // Enums must serialize as their member names ("Feature", "ToDo", ...), not numbers, to match
+    // the frontend's TS string-union types (planit-api-contracts-backend.md §2).
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -29,6 +35,14 @@ builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
 builder.Services.AddScoped<IWorkItemRepository, WorkItemRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<ProjectService>();
+builder.Services.AddScoped<WorkItemService>();
+
+// TEMPORARY (planit-api-contracts-backend.md §8 step 1) — swap for a claims-based accessor once
+// real auth (step 2/3) lands.
+builder.Services.AddScoped<ICurrentUserAccessor, TemporaryCurrentUserAccessor>();
 
 builder.Services.AddOptions<CorsOptions>()
     .Bind(builder.Configuration.GetSection(CorsOptions.SectionName))
