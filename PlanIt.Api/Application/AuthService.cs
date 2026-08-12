@@ -11,10 +11,6 @@ using PlanIt.Api.Startup.Options;
 
 namespace PlanIt.Api.Application;
 
-// RefreshAsync/LogoutAsync (rotation + reuse-detection state machine, planit-api-contracts-backend.md
-// §4) land in step 4. This step only issues an initial refresh token on register/login — the
-// RefreshToken repository already exists, so there's no reason to withhold that row until the
-// endpoint that later rotates it is built.
 public class AuthService(
     IUserRepository userRepository,
     IRefreshTokenRepository refreshTokenRepository,
@@ -78,6 +74,82 @@ public class AuthService(
         }
 
         return await IssueSessionAsync(user);
+    }
+
+    // Rotation with reuse detection (planit-api-contracts-backend.md §4):
+    // 1. Unknown token hash -> reject.
+    // 2. Already-revoked token presented again -> treat as a replay, revoke every active token
+    //    for that user (forces re-login everywhere), then reject.
+    // 3. Expired -> reject.
+    // 4. Otherwise: mint a new access+refresh token pair, revoke the presented one pointing at
+    //    its replacement, and return the new pair.
+    public async Task<AuthResponse> RefreshAsync(RefreshRequest request)
+    {
+        var tokenHash = RefreshTokenGenerator.Hash(request.RefreshToken);
+        var token = await refreshTokenRepository.GetByTokenHashAsync(tokenHash);
+
+        if (token is null)
+        {
+            throw new InvalidRefreshTokenException("Refresh token not recognized.");
+        }
+
+        if (token.RevokedAt is not null)
+        {
+            var activeTokens = await refreshTokenRepository.GetActiveForUserAsync(token.UserId);
+            foreach (var activeToken in activeTokens)
+            {
+                activeToken.RevokedAt = DateTimeOffset.UtcNow;
+            }
+            await db.SaveChangesAsync();
+
+            throw new InvalidRefreshTokenException("Refresh token already used; all sessions for this user have been revoked.");
+        }
+
+        if (token.ExpiresAt < DateTimeOffset.UtcNow)
+        {
+            throw new InvalidRefreshTokenException("Refresh token expired.");
+        }
+
+        var user = await userRepository.GetByIdAsync(token.UserId)
+            ?? throw new InvalidRefreshTokenException("Refresh token's user no longer exists.");
+
+        var (accessToken, expiresInSeconds) = jwtTokenService.CreateAccessToken(user);
+
+        var rawRefreshToken = RefreshTokenGenerator.CreateRawToken();
+        var newToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            TokenHash = RefreshTokenGenerator.Hash(rawRefreshToken),
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(jwtOptions.Value.RefreshTokenExpirationDays),
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        refreshTokenRepository.Add(newToken);
+
+        token.RevokedAt = DateTimeOffset.UtcNow;
+        token.ReplacedByTokenId = newToken.Id;
+
+        await db.SaveChangesAsync();
+
+        var userDto = new UserSummaryDto(user.Id, user.Username, user.Email, user.CreatedAt);
+        return new AuthResponse(userDto, accessToken, expiresInSeconds, rawRefreshToken);
+    }
+
+    // Revokes only the specific presented refresh token, not every session for the user — an
+    // already-revoked/unknown token is treated as an idempotent no-op, not an error, since the
+    // end state ("this token no longer works") is already true.
+    public async Task LogoutAsync(RefreshRequest request)
+    {
+        var tokenHash = RefreshTokenGenerator.Hash(request.RefreshToken);
+        var token = await refreshTokenRepository.GetByTokenHashAsync(tokenHash);
+
+        if (token is null || token.RevokedAt is not null)
+        {
+            return;
+        }
+
+        token.RevokedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
     }
 
     private async Task<AuthResponse> IssueSessionAsync(User user)
