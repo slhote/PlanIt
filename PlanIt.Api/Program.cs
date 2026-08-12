@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -43,9 +45,8 @@ builder.Services.AddScoped<ProjectService>();
 builder.Services.AddScoped<WorkItemService>();
 builder.Services.AddScoped<AuthService>();
 
-// TEMPORARY (planit-api-contracts-backend.md §8 step 1) — swap for a claims-based accessor once
-// [Authorize] is turned on for real (step 3).
-builder.Services.AddScoped<ICurrentUserAccessor, TemporaryCurrentUserAccessor>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserAccessor, ClaimsCurrentUserAccessor>();
 
 // PasswordHasher<T> (Microsoft.AspNetCore.Identity, part of the ASP.NET Core shared framework —
 // no extra package needed): PBKDF2 with adaptive iteration counts, versioned hash format. Chosen
@@ -68,6 +69,12 @@ var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<Jw
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Without this, ASP.NET Core remaps short JWT claim names ("sub", ...) to long legacy
+        // ClaimTypes URIs on the way in, so a lookup for JwtRegisteredClaimNames.Sub against
+        // context.User silently finds nothing even though the token validated fine. Keep the
+        // claims exactly as JwtTokenService minted them.
+        options.MapInboundClaims = false;
+
         // HS256 shared secret (planit-system-design-architecture.md §7) — a single service
         // both mints and verifies tokens, so no asymmetric RS256 split is needed.
         options.TokenValidationParameters = new TokenValidationParameters
@@ -82,7 +89,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero,
         };
     });
-builder.Services.AddAuthorization();
+
+// ProjectMember policy: gates project-scoped routes to members only, 404 (not 403) for everyone
+// else via ProjectMember404ResultHandler below (planit-api-contracts-backend.md §7). This is a
+// deliberate, acknowledged exception to "repository access is service-layer-only" — see
+// ProjectMemberAuthorizationHandler's own comment for the rationale.
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy("ProjectMember", policy => policy.Requirements.Add(new ProjectMemberRequirement())));
+// Scoped, not Singleton — it depends on IProjectMemberRepository, which is scoped.
+builder.Services.AddScoped<IAuthorizationHandler, ProjectMemberAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProjectMember404ResultHandler>();
 
 builder.Services.AddCors(options =>
 {
