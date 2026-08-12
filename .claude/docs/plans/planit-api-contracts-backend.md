@@ -315,11 +315,12 @@ Recommended order across follow-up sessions, each roughly a session-sized chunk.
 1. **DTOs + read-only endpoints against existing data, no auth yet.** Stand up `ProjectsController`/`WorkItemsController`/`UsersController` GET endpoints with a temporary hardcoded/test `userId`, no `[Authorize]`. Validates DTO shapes and service/repository wiring end-to-end before auth complexity layers on.
 2. **Auth: password hashing, JWT minting, register/login.** `AuthService`, `PasswordHasher<User>`, `IJwtTokenService`, `AuthController` register/login only (no refresh yet). Enables real `[Authorize]` for the rest of the API.
 3. **Policy-based access control infrastructure.** `ProjectMemberRequirement`, `ProjectMemberAuthorizationHandler`, the `"ProjectMember"` policy registration, and the `ProjectMember404ResultHandler` (§7) — larger than a simple attribute flip, since it's the full custom-policy + result-handler stack. Apply `[Authorize(Policy = "ProjectMember")]` across all project-scoped controllers/actions and confirm 404-not-403 behavior for non-members.
-4. **Refresh rotation + logout.** Add the rotation/reuse-detection state machine (§4) and the two new 401 exception types + handlers.
-5. **Mutating work item endpoints.** Create/patch/delete, hierarchy invariant, delete-cascade and completion-cascade strategies, the `Order` column + `AddWorkItemOrder` migration + assignment-on-create logic (§6), optimistic-concurrency (`xmin`) surfaced as `rowVersion` and enforced on update.
-6. **SignalR hub + MediatR wiring.** `AddMediatR` registration, `PlanItHub`, the 7 notification record types + their 7 `INotificationHandler` classes in `Application/Realtime/`, JWT-from-query-string handshake config, origin-exclusion header plumbing.
-7. **Project members endpoints + membership notifications.** Depends only on auth (step 2) and the notification types (step 6) — can slot in alongside step 6 if convenient.
-8. **Similar-tasks route stub.** Register the route shape now (returns 501, or is simply omitted from routing) so the URL contract is locked; actual implementation is subplan 8.
+4. **Create Project endpoint.** `ProjectService.CreateAsync` (insert `Project` + creator `ProjectMember(Role=Owner)` in one `SaveChangesAsync`, per §3), `ProjectsController` `POST /projects`, plain `[Authorize]`. **Inserted after the fact** — `POST /projects` was listed in §1's endpoint table from the start but wasn't assigned to any step below; steps 1–3's verification worked around the gap by hand-seeding a project via direct SQL. Built now so steps 5–9 can create real projects/memberships through the API instead of continuing that workaround.
+5. **Refresh rotation + logout.** Add the rotation/reuse-detection state machine (§4) and the two new 401 exception types + handlers.
+6. **Mutating work item endpoints.** Create/patch/delete, hierarchy invariant, delete-cascade and completion-cascade strategies, the `Order` column + `AddWorkItemOrder` migration + assignment-on-create logic (§6), optimistic-concurrency (`xmin`) surfaced as `rowVersion` and enforced on update.
+7. **SignalR hub + MediatR wiring.** `AddMediatR` registration, `PlanItHub`, the 7 notification record types + their 7 `INotificationHandler` classes in `Application/Realtime/`, JWT-from-query-string handshake config, origin-exclusion header plumbing.
+8. **Project members endpoints + membership notifications.** Depends only on auth (step 2) and the notification types (step 7) — can slot in alongside step 7 if convenient.
+9. **Similar-tasks route stub.** Register the route shape now (returns 501, or is simply omitted from routing) so the URL contract is locked; actual implementation is subplan 8.
 
 ---
 
@@ -334,14 +335,15 @@ Recommended order across follow-up sessions, each roughly a session-sized chunk.
   - `feature/api-contracts-backend/01-read-only-endpoints`
   - `feature/api-contracts-backend/02-auth-register-login`
   - `feature/api-contracts-backend/03-access-control-policy`
-  - `feature/api-contracts-backend/04-refresh-rotation-logout`
-  - `feature/api-contracts-backend/05-workitem-mutations-ordering`
-  - `feature/api-contracts-backend/06-signalr-mediatr`
-  - `feature/api-contracts-backend/07-project-members`
-  - `feature/api-contracts-backend/08-similar-tasks-stub`
-- **Dependencies resolve through the integration branch, never branch-to-branch.** Step 3 depends on step 2 (needs real `[Authorize]` to test against); step 6 depends on step 5 (broadcasts fire from the mutation endpoints); step 7 depends on steps 2 and 6. When a dependent step is ready to start, its branch is cut *after* the prerequisite step's branch has already been merged into `integration/api-contracts-backend` — never by branching off the prerequisite's still-open branch directly. This keeps every step branch's history traceable to one clean base and avoids resolving the same dependency twice (once in a branch-to-branch merge, again when that branch later merges into the integration branch).
+  - `feature/api-contracts-backend/create-project-endpoint` (step 4, inserted after the fact — see §8; unnumbered since it wasn't in the original 8-step list)
+  - `feature/api-contracts-backend/05-refresh-rotation-logout`
+  - `feature/api-contracts-backend/06-workitem-mutations-ordering`
+  - `feature/api-contracts-backend/07-signalr-mediatr`
+  - `feature/api-contracts-backend/08-project-members`
+  - `feature/api-contracts-backend/09-similar-tasks-stub`
+- **Dependencies resolve through the integration branch, never branch-to-branch.** Step 3 depends on step 2 (needs real `[Authorize]` to test against); step 7 depends on step 6 (broadcasts fire from the mutation endpoints); step 8 depends on steps 2 and 7. When a dependent step is ready to start, its branch is cut *after* the prerequisite step's branch has already been merged into `integration/api-contracts-backend` — never by branching off the prerequisite's still-open branch directly. This keeps every step branch's history traceable to one clean base and avoids resolving the same dependency twice (once in a branch-to-branch merge, again when that branch later merges into the integration branch).
 - **Per-step PRs target `integration/api-contracts-backend`, not `main`.** These can move fast — they're checkpoints for catching mistakes early and keeping step-sized diffs reviewable, not the final gate.
-- **One final PR, `integration/api-contracts-backend` → `main`,** opened once all 8 steps (or an agreed subset forming a coherent, demo-able milestone — e.g. steps 1–4 as "auth is live" before continuing) have landed on the integration branch. **This is the PR the user reviews before anything reaches `main`.** Nothing merges to `main` outside this one PR for the duration of this subplan's implementation.
+- **One final PR, `integration/api-contracts-backend` → `main`,** opened once all 9 steps (or an agreed subset forming a coherent, demo-able milestone — e.g. steps 1–5 as "auth is live" before continuing) have landed on the integration branch. **This is the PR the user reviews before anything reaches `main`.** Nothing merges to `main` outside this one PR for the duration of this subplan's implementation.
 - **If `main` moves during implementation** (e.g. an unrelated fix lands), rebase `integration/api-contracts-backend` onto `main` — don't merge `main` into it — to keep the eventual `main`-bound diff clean and reviewable as "what this subplan actually changed."
 
 ---
