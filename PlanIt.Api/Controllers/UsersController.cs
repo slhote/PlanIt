@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PlanIt.Api.Application;
 using PlanIt.Api.Contracts.Users;
@@ -6,6 +7,7 @@ namespace PlanIt.Api.Controllers;
 
 [ApiController]
 [Route("users")]
+[Authorize]
 public class UsersController(UserService userService) : ControllerBase
 {
     [HttpGet("search")]
