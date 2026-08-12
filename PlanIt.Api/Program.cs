@@ -124,6 +124,7 @@ builder.Services.AddExceptionHandler<TaskNotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<InvalidCredentialsExceptionHandler>();
+builder.Services.AddExceptionHandler<InvalidRefreshTokenExceptionHandler>();
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
