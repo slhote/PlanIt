@@ -89,6 +89,37 @@ A `DbUpdateConcurrencyException` (a stale `xmin` write) is caught inside the rep
 
 **Consistency check:** this matches the master plan's already-stated Moq philosophy ("narrow, leaf-level collaborator mocking") — the repository interfaces are exactly that leaf. No new testing philosophy is being introduced here, only its concrete application to the persistence layer.
 
+### 6. Migration testing strategy
+
+**Decision:** Two types of migration tests complement the repository integration tests above. A third type (backwards-compatibility tests) is documented as a reference for production codebases but not implemented for PlanIt.
+
+**PlanIt's test suite:**
+
+1. **Migration integration tests** — apply all migrations to a fresh Postgres container via Testcontainers, then verify:
+   - Table/column structure is correct (schema matches entity config)
+   - Constraints enforce (unique, FK, check constraints work)
+   - Defaults apply (CreatedAt, JoinedAt, etc.)
+   - Cascading behavior works (FK cascades delete as expected)
+   - Concurrency token (xmin column) exists and functions
+   - Data persists correctly through insert/query cycles
+
+   These tests catch schema correctness bugs and constraint-enforcement problems with the first-time schema creation.
+
+2. **Migration sequencing tests** — verify data survives through a sequence of migrations:
+   - Apply migrations up to point N
+   - Insert representative test data
+   - Apply migration N+1 (and subsequent migrations)
+   - Verify data is still present, unchanged (except where explicitly transformed)
+   - Verify queries still work post-migration
+
+   These tests catch data loss or data corruption during schema evolution (e.g., if a migration accidentally drops a column or corrupts existing rows).
+
+Both are integration tests and run against real Postgres via Testcontainers, never mocked. See [`migration-integration-tests.md`](../notes/migration-integration-tests.md) for detailed examples and patterns.
+
+**Reference for production codebases:**
+
+A third type of test, **backwards-compatibility tests**, is valuable for mature production systems where rolling deployments overlap old and new code versions. These tests verify that old code can still function with a new database schema (or explicitly document why downtime/deployment coordination is required). See [`migration-backwards-compatibility-testing.cs`](../notes/migration-backwards-compatibility-testing.cs) and [`production-migration-best-practices.md`](../notes/production-migration-best-practices.md) (§ "Backwards-Compatibility During Rollout") for how this would work and the benefits it provides — documented as a reference pattern, not part of PlanIt's implementation.
+
 ---
 
 ## Relationship to other subplans
