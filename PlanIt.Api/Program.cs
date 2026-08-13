@@ -144,9 +144,14 @@ builder.Services.AddCors(options =>
 
         // Credentials required for the SignalR handshake (access token in the negotiate/connect
         // request). GET/POST/PATCH/DELETE only — no PUT, PATCH is the idempotent mutation verb.
+        // AllowAnyHeader (not an explicit WithHeaders list) because the SignalR JS client sends
+        // several of its own headers on /hub/negotiate depending on transport (X-Requested-With,
+        // X-SignalR-User-Agent, ...) that aren't worth hand-enumerating and can change between
+        // client versions. Valid alongside AllowCredentials() as long as origins aren't
+        // wildcarded — WithOrigins() above is an explicit allowlist, not AllowAnyOrigin().
         policy.WithOrigins(corsOptions.AllowedOrigins.ToArray())
             .WithMethods("GET", "POST", "PATCH", "DELETE")
-            .WithHeaders("Content-Type", "Authorization")
+            .AllowAnyHeader()
             .AllowCredentials();
     });
 });
