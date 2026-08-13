@@ -8,6 +8,7 @@ on:
       - "PlanIt.Api.Tests/**"
       - "PlanIt.slnx"
       - "Dockerfile"
+      - "infra/**"
       - ".github/workflows/backend-deploy.yml"
 
 permissions:
