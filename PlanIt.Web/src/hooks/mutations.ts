@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createWorkItem, updateWorkItem, deleteWorkItem, reorderWorkItems } from "../api/workItems";
+import { createWorkItem, updateWorkItem, deleteWorkItem } from "../api/workItems";
 import type { CreateWorkItemInput, UpdateWorkItemInput } from "../api/workItems";
 import { createProject, type ProjectBoard, type CreateProjectInput } from "../api/projects";
 import { addProjectMember, removeProjectMember } from "../api/projectMembers";
@@ -36,7 +36,7 @@ export function useCreateWorkItemMutation(projectId: Guid) {
 export function useUpdateWorkItemStatusMutation(projectId: Guid) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: Guid; status: WorkItemStatus }) => updateWorkItem(id, { status }),
+    mutationFn: ({ id, status }: { id: Guid; status: WorkItemStatus }) => updateWorkItem(projectId, id, { status }),
     onMutate: async ({ id, status }) => {
       await queryClient.cancelQueries({ queryKey: ["project", projectId] });
       const previous = queryClient.getQueryData<ProjectBoard>(["project", projectId]);
@@ -56,12 +56,30 @@ export function useUpdateWorkItemStatusMutation(projectId: Guid) {
   });
 }
 
-/** Used by drag-and-drop reordering within/across columns. Board owns the optimistic visual order itself (via local state), so this just persists it and re-syncs from the server truth on failure. */
-export function useReorderWorkItemsMutation(projectId: Guid) {
+/**
+ * Used by drag-and-drop reordering within/across columns. There's no bulk reorder endpoint — a
+ * move persists as a single PATCH of the moved item's fractional `order` (the board computes the
+ * new value from its neighbors; see computeNewOrder in Board.tsx). Optimistic cache write, revert
+ * on failure, same shape as the status mutation above.
+ */
+export function useUpdateWorkItemOrderMutation(projectId: Guid) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (orderedIds: Guid[]) => reorderWorkItems(orderedIds),
-    onError: () => {
+    mutationFn: ({ id, order }: { id: Guid; order: number }) => updateWorkItem(projectId, id, { order }),
+    onMutate: async ({ id, order }) => {
+      await queryClient.cancelQueries({ queryKey: ["project", projectId] });
+      const previous = queryClient.getQueryData<ProjectBoard>(["project", projectId]);
+      queryClient.setQueryData<ProjectBoard>(["project", projectId], (old) =>
+        old ? { ...old, workItems: old.workItems.map((w) => (w.id === id ? { ...w, order } : w)) } : old,
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["project", projectId], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
   });
@@ -70,7 +88,7 @@ export function useReorderWorkItemsMutation(projectId: Guid) {
 export function useUpdateWorkItemMutation(opts: { projectId: Guid; featureId?: Guid; workItemId: Guid }) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (patch: UpdateWorkItemInput) => updateWorkItem(opts.workItemId, patch),
+    mutationFn: (patch: UpdateWorkItemInput) => updateWorkItem(opts.projectId, opts.workItemId, patch),
     onSuccess: () => {
       // Content-only edit — invalidate rather than patch the cache directly, per
       // the same lazy-refetch treatment a WorkItemUpdated broadcast would get.
@@ -84,7 +102,7 @@ export function useUpdateWorkItemMutation(opts: { projectId: Guid; featureId?: G
 export function useDeleteWorkItemMutation(projectId: Guid) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: Guid) => deleteWorkItem(id),
+    mutationFn: (id: Guid) => deleteWorkItem(projectId, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },

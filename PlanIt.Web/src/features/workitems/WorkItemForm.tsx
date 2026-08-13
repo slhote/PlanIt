@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { TagInput } from "../../components/TagInput";
-import { ALL_TAGS } from "../../api/seedData";
-import { WORK_ITEM_STATUSES } from "../../types/domain";
+import { ALL_TAGS, WORK_ITEM_STATUSES } from "../../types/domain";
 import type { Guid, WorkItem, WorkItemStatus, WorkItemType } from "../../types/domain";
 import type { ProjectMemberWithUser } from "../../api/projectMembers";
 

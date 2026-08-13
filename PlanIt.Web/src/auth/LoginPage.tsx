@@ -1,74 +1,76 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
-import { fetchUsers } from "../api/users";
-import { mockLogin } from "../api/auth";
+import { useState, type FormEvent } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router";
+import { login } from "../api/auth";
 import { setSession } from "./authStore";
-import { initials } from "../components/initials";
-import type { User } from "../types/domain";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const usersQuery = useQuery({ queryKey: ["users"], queryFn: fetchUsers });
+  const [usernameOrEmail, setUsernameOrEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const loginMutation = useMutation({
-    mutationFn: (user: User) => mockLogin(user),
+    mutationFn: () => login(usernameOrEmail, password),
     onSuccess: (result) => {
-      setSession(result.user, result.accessToken, result.expiresInSeconds);
+      setSession(result.user, result.accessToken, result.expiresInSeconds, result.refreshToken);
       navigate("/", { replace: true });
     },
   });
 
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!usernameOrEmail.trim() || !password) return;
+    loginMutation.mutate();
+  }
+
   return (
     <div className="center-page">
-      <div style={{ width: "100%", maxWidth: 480 }}>
+      <div style={{ width: "100%", maxWidth: 380 }}>
         <div className="stack" style={{ marginBottom: "var(--space-6)", textAlign: "center" }}>
           <h1 style={{ fontSize: "var(--font-size-lg)" }}>PlanIt</h1>
-          <p className="muted">
-            No real accounts yet — pick a seeded teammate to explore the board as them.
-          </p>
+          <p className="muted">Sign in to your account.</p>
         </div>
 
-        {usersQuery.isLoading && (
-          <div className="loading-state">
-            <div className="spinner" />
-            <p>Loading teammates…</p>
+        <form onSubmit={handleSubmit}>
+          <div className="field">
+            <label htmlFor="login-username">Username or email</label>
+            <input
+              id="login-username"
+              className="input"
+              value={usernameOrEmail}
+              onChange={(e) => setUsernameOrEmail(e.target.value)}
+              autoFocus
+              autoComplete="username"
+              required
+            />
           </div>
-        )}
-
-        {usersQuery.isError && (
-          <div className="error-state">
-            <p>Couldn't load the demo users. Try again.</p>
+          <div className="field">
+            <label htmlFor="login-password">Password</label>
+            <input
+              id="login-password"
+              type="password"
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
           </div>
-        )}
 
-        {usersQuery.data && (
-          <div className="user-picker-grid">
-            {usersQuery.data.map((user) => (
-              <button
-                key={user.id}
-                type="button"
-                className="user-pick-card"
-                disabled={loginMutation.isPending}
-                onClick={() => loginMutation.mutate(user)}
-              >
-                <span className="avatar">{initials(user.username)}</span>
-                <span>
-                  <div className="card-title">{user.username}</div>
-                  <div className="card-meta">{user.email}</div>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+          {loginMutation.isError && <p className="field-error">Invalid username/email or password.</p>}
 
-        {loginMutation.isPending && (
-          <div className="loading-state">
-            <div className="spinner" />
-            <p>Signing in…</p>
-          </div>
-        )}
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={loginMutation.isPending || !usernameOrEmail.trim() || !password}
+          >
+            {loginMutation.isPending ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
 
-        {loginMutation.isError && <p className="field-error">Sign-in failed. Try again.</p>}
+        <p className="muted" style={{ textAlign: "center", marginTop: "var(--space-4)" }}>
+          No account yet? <Link to="/register">Create one</Link>
+        </p>
       </div>
     </div>
   );

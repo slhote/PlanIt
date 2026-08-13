@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchProjects, fetchProjectBoard } from "../api/projects";
 import { fetchFeature, fetchWorkItem } from "../api/workItems";
 import { fetchProjectMembers } from "../api/projectMembers";
-import { fetchUsers } from "../api/users";
+import { searchUsers } from "../api/users";
 import type { Guid } from "../types/domain";
 
 export function useProjectsQuery() {
@@ -18,19 +18,19 @@ export function useProjectBoardQuery(projectId: Guid | undefined) {
   });
 }
 
-export function useFeatureQuery(featureId: Guid | undefined) {
+export function useFeatureQuery(projectId: Guid | undefined, featureId: Guid | undefined) {
   return useQuery({
     queryKey: ["feature", featureId],
-    queryFn: () => fetchFeature(featureId as Guid),
-    enabled: !!featureId,
+    queryFn: () => fetchFeature(projectId as Guid, featureId as Guid),
+    enabled: !!projectId && !!featureId,
   });
 }
 
-export function useWorkItemQuery(workItemId: Guid | undefined) {
+export function useWorkItemQuery(projectId: Guid | undefined, workItemId: Guid | undefined) {
   return useQuery({
     queryKey: ["workItem", workItemId],
-    queryFn: () => fetchWorkItem(workItemId as Guid),
-    enabled: !!workItemId,
+    queryFn: () => fetchWorkItem(projectId as Guid, workItemId as Guid),
+    enabled: !!projectId && !!workItemId,
   });
 }
 
@@ -42,6 +42,10 @@ export function useProjectMembersQuery(projectId: Guid | undefined) {
   });
 }
 
-export function useUsersQuery() {
-  return useQuery({ queryKey: ["users"], queryFn: fetchUsers });
+export function useUserSearchQuery(query: string) {
+  return useQuery({
+    queryKey: ["userSearch", query],
+    queryFn: () => searchUsers(query),
+    enabled: query.trim().length > 0,
+  });
 }

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useProjectBoardQuery, useProjectMembersQuery } from "../../hooks/queries";
-import { useUpdateWorkItemStatusMutation, useReorderWorkItemsMutation } from "../../hooks/mutations";
-import { Board } from "./Board";
+import { useUpdateWorkItemStatusMutation, useUpdateWorkItemOrderMutation } from "../../hooks/mutations";
+import { Board, computeNewOrder } from "./Board";
 import { CreateWorkItemModal } from "../workitems/CreateWorkItemModal";
 import { CollaboratorsModal } from "./CollaboratorsModal";
 import { setLastProjectId } from "./lastProject";
 import { MapIcon } from "../../components/icons";
 import { statusLabel } from "../workitems/WorkItemForm";
+import { useProjectRealtime } from "../../realtime/useProjectRealtime";
 import type { Guid, User, WorkItem, WorkItemStatus } from "../../types/domain";
 
 export function ProjectBoardPage() {
@@ -16,7 +17,8 @@ export function ProjectBoardPage() {
   const boardQuery = useProjectBoardQuery(projectId);
   const membersQuery = useProjectMembersQuery(projectId);
   const updateStatus = useUpdateWorkItemStatusMutation(projectId as Guid);
-  const reorder = useReorderWorkItemsMutation(projectId as Guid);
+  const reorder = useUpdateWorkItemOrderMutation(projectId as Guid);
+  useProjectRealtime(projectId);
 
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | "unassigned" | Guid>("all");
   const [creating, setCreating] = useState(false);
@@ -61,6 +63,10 @@ export function ProjectBoardPage() {
   const itemsByStatus = useMemo(() => {
     const grouped: Record<WorkItemStatus, WorkItem[]> = { ToDo: [], InProgress: [], Completed: [] };
     for (const item of filteredItems) grouped[item.status].push(item);
+    // The server doesn't guarantee row order — `order` is the actual sort key for a column.
+    for (const status of Object.keys(grouped) as WorkItemStatus[]) {
+      grouped[status].sort((a, b) => a.order - b.order);
+    }
     return grouped;
   }, [filteredItems]);
 
@@ -98,12 +104,16 @@ export function ProjectBoardPage() {
     );
   }
 
-  function handleReorder(orderedIds: Guid[]) {
-    reorder.mutate(orderedIds, {
-      onError: (err) => {
-        setSaveError(`Couldn't save the new order — ${(err as Error).message}`);
+  function handleReorder(orderedItems: WorkItem[], movedItemId: Guid) {
+    const order = computeNewOrder(orderedItems, movedItemId);
+    reorder.mutate(
+      { id: movedItemId, order },
+      {
+        onError: (err) => {
+          setSaveError(`Couldn't save the new order — ${(err as Error).message}`);
+        },
       },
-    });
+    );
   }
 
   if (boardQuery.isLoading) {
