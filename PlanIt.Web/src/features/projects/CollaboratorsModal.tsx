@@ -1,30 +1,33 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "../../components/Modal";
 import { initials } from "../../components/initials";
 import { useAuth } from "../../auth/useAuth";
-import { useProjectMembersQuery, useUsersQuery } from "../../hooks/queries";
+import { useProjectMembersQuery, useUserSearchQuery } from "../../hooks/queries";
 import { useAddProjectMemberMutation, useRemoveProjectMemberMutation } from "../../hooks/mutations";
 import type { Guid } from "../../types/domain";
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function CollaboratorsModal({ projectId, onClose }: { projectId: Guid; onClose: () => void }) {
   const { user } = useAuth();
   const membersQuery = useProjectMembersQuery(projectId);
-  const usersQuery = useUsersQuery();
   const addMember = useAddProjectMemberMutation(projectId);
   const removeMember = useRemoveProjectMemberMutation(projectId);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const searchQuery = useUserSearchQuery(debouncedQuery);
 
   const members = membersQuery.data ?? [];
   const isOwner = members.some((m) => m.userId === user?.id && m.role === "Owner");
   const memberIds = new Set(members.map((m) => m.userId));
 
-  const searchResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q || !usersQuery.data) return [];
-    return usersQuery.data.filter(
-      (u) => !memberIds.has(u.id) && (u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)),
-    );
-  }, [query, usersQuery.data, members]);
+  const searchResults = (searchQuery.data ?? []).filter((u) => !memberIds.has(u.id));
 
   return (
     <Modal title="Collaborators" onClose={onClose}>
@@ -72,7 +75,7 @@ export function CollaboratorsModal({ projectId, onClose }: { projectId: Guid; on
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          {query.trim() && searchResults.length === 0 && (
+          {query.trim() && !searchQuery.isFetching && searchResults.length === 0 && (
             <p className="field-hint">No matching users, or they're already a collaborator.</p>
           )}
           {searchResults.length > 0 && (

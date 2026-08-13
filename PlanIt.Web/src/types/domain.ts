@@ -40,8 +40,16 @@ export interface WorkItem {
   status: WorkItemStatus;
   assigneeId: Guid | null;
   tags: string[];
+  // Fractional-index sort key, meaningful only within a (projectId, parentId, status) group —
+  // one board column. The server assigns it on create and a drag-and-drop move updates it via a
+  // single-item PATCH (planit-api-contracts-backend.md §6) — there's no bulk reorder endpoint.
+  order: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export const MAX_TAGS_PER_WORK_ITEM = 3;
+
+// Fixed tag vocabulary for the tag picker's suggestions — a frontend-only concept (not server
+// data), moved here from the now-retired api/seedData.ts.
+export const ALL_TAGS = ["frontend", "backend", "design", "bug", "urgent"] as const;

@@ -21,9 +21,9 @@ export function WorkItemDetailContent({
   parentFeatureId?: Guid;
 }) {
   const navigate = useNavigate();
-  const featureQuery = useFeatureQuery(kind === "feature" ? workItemId : undefined);
-  const taskQuery = useWorkItemQuery(kind === "task" ? workItemId : undefined);
-  const parentFeatureQuery = useWorkItemQuery(kind === "task" ? parentFeatureId : undefined);
+  const featureQuery = useFeatureQuery(projectId, kind === "feature" ? workItemId : undefined);
+  const taskQuery = useWorkItemQuery(projectId, kind === "task" ? workItemId : undefined);
+  const parentFeatureQuery = useWorkItemQuery(projectId, kind === "task" ? parentFeatureId : undefined);
   const membersQuery = useProjectMembersQuery(projectId);
 
   const [editing, setEditing] = useState(false);

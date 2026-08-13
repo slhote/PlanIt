@@ -21,6 +21,26 @@ import type { Guid, User, WorkItem, WorkItemStatus } from "../../types/domain";
 
 type ColumnMap = Record<WorkItemStatus, WorkItem[]>;
 
+const ORDER_GAP = 1024;
+
+/**
+ * Computes the moved item's new fractional `order` from its neighbors in the destination
+ * column's final arrangement — the midpoint between the items on either side, or ±ORDER_GAP at a
+ * boundary. Matches the server's own assignment scheme (planit-api-contracts-backend.md §6) so a
+ * freshly-created item and a freshly-moved item interleave correctly without a refetch.
+ */
+export function computeNewOrder(orderedItems: WorkItem[], movedItemId: Guid): number {
+  const index = orderedItems.findIndex((item) => item.id === movedItemId);
+  if (index === -1) return ORDER_GAP;
+
+  const prev = orderedItems[index - 1];
+  const next = orderedItems[index + 1];
+  if (prev && next) return (prev.order + next.order) / 2;
+  if (prev) return prev.order + ORDER_GAP;
+  if (next) return next.order - ORDER_GAP;
+  return ORDER_GAP;
+}
+
 function SortableCard({
   item,
   assignee,
@@ -112,7 +132,10 @@ export function Board({
   subtaskProgressOf: (item: WorkItem) => { done: number; total: number } | undefined;
   onOpenItem: (item: WorkItem) => void;
   onStatusChange: (item: WorkItem, newStatus: WorkItemStatus) => void;
-  onReorder: (orderedIds: Guid[]) => void;
+  /** orderedItems is the destination column's final order after the move; movedItemId identifies
+   * which one to persist a new `order` for — its neighbors in orderedItems are used to compute a
+   * fractional midpoint (planit-api-contracts-backend.md §6), no other item's order changes. */
+  onReorder: (orderedItems: WorkItem[], movedItemId: Guid) => void;
 }) {
   // Board owns the live drag arrangement locally (standard dnd-kit multi-container
   // pattern) so cards can visually move between columns mid-drag; it resyncs from
@@ -171,6 +194,7 @@ export function Board({
     if (!activeContainer || !overContainer) return;
 
     let finalColumns = columns;
+    let positionChanged = activeContainer !== overContainer;
     if (activeContainer === overContainer) {
       const items = columns[activeContainer];
       const activeIndex = items.findIndex((i) => i.id === active.id);
@@ -178,6 +202,7 @@ export function Board({
       if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
         finalColumns = { ...columns, [activeContainer]: arrayMove(items, activeIndex, overIndex) };
         setColumns(finalColumns);
+        positionChanged = true;
       }
     }
 
@@ -186,9 +211,11 @@ export function Board({
       onStatusChange(movedItem, overContainer);
     }
 
-    onReorder(finalColumns[overContainer].map((i) => i.id));
-    if (activeContainer !== overContainer) {
-      onReorder(finalColumns[activeContainer].map((i) => i.id));
+    // Only the destination column's final order matters — the source column's remaining items
+    // keep their existing `order` values unchanged (that's the point of fractional indexing, no
+    // sibling renumbering needed when an item leaves).
+    if (positionChanged) {
+      onReorder(finalColumns[overContainer], active.id as Guid);
     }
   }
 

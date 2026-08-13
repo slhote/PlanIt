@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router";
 import { LoginPage } from "../auth/LoginPage";
+import { RegisterPage } from "../auth/RegisterPage";
 import { RequireAuth } from "../auth/RequireAuth";
 import { AppShell } from "../components/AppShell";
 import { LandingRedirect } from "../features/projects/LandingRedirect";
@@ -11,6 +12,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route
         element={
           <RequireAuth>

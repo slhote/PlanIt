@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Modal } from "../../components/Modal";
 import { useCreateProjectMutation } from "../../hooks/mutations";
-import { useAuth } from "../../auth/useAuth";
 
 export function CreateProjectModal({
   onClose,
@@ -10,16 +9,15 @@ export function CreateProjectModal({
   onClose: () => void;
   onCreated: (projectId: string) => void;
 }) {
-  const { user } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const createProject = useCreateProjectMutation();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!user || !name.trim()) return;
+    if (!name.trim()) return;
     createProject.mutate(
-      { name: name.trim(), description: description.trim() || null, createdByUserId: user.id },
+      { name: name.trim(), description: description.trim() || null },
       { onSuccess: (project) => onCreated(project.id) },
     );
   }

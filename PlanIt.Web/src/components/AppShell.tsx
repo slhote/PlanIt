@@ -1,16 +1,20 @@
-import { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../auth/useAuth";
-import { clearSession } from "../auth/authStore";
-import { isChaosMode, setChaosMode } from "../api/mockClient";
+import { clearSession, getRefreshToken } from "../auth/authStore";
+import { logout } from "../api/auth";
 import { initials } from "./initials";
 
 export function AppShell() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [chaos, setChaos] = useState(isChaosMode());
 
-  function handleLogout() {
+  async function handleLogout() {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      // Best-effort — revoke server-side, but don't block the user from leaving if it fails
+      // (e.g. token already expired). The local session is cleared either way.
+      await logout(refreshToken).catch(() => {});
+    }
     clearSession();
     navigate("/login", { replace: true });
   }
@@ -24,21 +28,6 @@ export function AppShell() {
 
         {user && (
           <div className="row">
-            <label
-              className="row chaos-toggle"
-              title="Forces the next save (drag, edit, delete, reorder…) to fail, so you can see error handling and optimistic-update revert."
-            >
-              <input
-                type="checkbox"
-                checked={chaos}
-                onChange={(e) => {
-                  setChaos(e.target.checked);
-                  setChaosMode(e.target.checked);
-                }}
-              />
-              <span className="muted">Simulate failure</span>
-            </label>
-
             <span className="avatar avatar-sm" title={user.username}>
               {initials(user.username)}
             </span>
