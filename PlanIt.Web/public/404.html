@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>PlanIt</title>
+    <script>
+      // rafgraph/spa-github-pages pattern: GitHub Pages serves this file for any path that isn't
+      // a real file. This script re-encodes the attempted deep-link path into a query string on
+      // the index.html URL, which the main.tsx decode script then restores before React Router
+      // mounts. Chosen over hash-based routing for clean path-based URLs (planit-master-plan.md).
+      //
+      // segmentCount = 1: one path segment before the SPA (the repo name "PlanIt").
+      // Example: /PlanIt/project/123 → /PlanIt/?/project/123
+      var segmentCount = 1;
+      var l = window.location;
+      l.replace(
+        l.protocol +
+          '//' +
+          l.host +
+          l.pathname.split('/').slice(0, 1 + segmentCount).join('/') +
+          '/?/' +
+          l.pathname
+            .slice(1)
+            .split('/')
+            .slice(segmentCount)
+            .join('/')
+            .replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash,
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

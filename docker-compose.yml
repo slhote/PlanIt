@@ -17,10 +17,30 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: PlanIt.Api/Dockerfile
+    container_name: planit-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=PlanIt;Username=postgres;Password=postgres"
+      Cors__AllowedOrigins__0: "http://localhost:5173"
+      Jwt__Issuer: "planit-api-dev"
+      Jwt__Audience: "planit-web-dev"
+      Jwt__ExpirationMinutes: "15"
+      Jwt__RefreshTokenExpirationDays: "30"
+      # JWT signing key — required. Set via .env or export JWT_SIGNING_KEY=... before running.
+      Jwt__SigningKey: "${JWT_SIGNING_KEY}"
+      APPLY_MIGRATIONS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - full-stack
+
 volumes:
   planit-postgres-data:
-
-# PlanIt.Api is not containerized yet (no Dockerfile) — DevOps/Hosting subplan's job.
-# Once that exists, add an `api` service here that depends_on postgres with
-# `condition: service_healthy`, using the same PlanIt/postgres/postgres credentials
-# as PlanIt.Api/appsettings.Development.json's DefaultConnection.

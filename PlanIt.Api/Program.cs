@@ -184,6 +184,16 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Runs EF Core migrations at startup when APPLY_MIGRATIONS=true. Set this env var on the
+// Container App for the first deploy (and any deploy that adds a new migration), then remove it.
+// Migrations are idempotent, so running them on a single-instance deployment is safe.
+if (app.Configuration["APPLY_MIGRATIONS"] == "true")
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<PlanItDbContext>();
+    db.Database.Migrate();
+}
+
 // Exception handling first, so it can catch anything thrown by later middleware.
 app.UseExceptionHandler();
 
