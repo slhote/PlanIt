@@ -12,18 +12,31 @@ param neonConnectionString string
 @description('JWT HS256 signing key (32+ random characters).')
 param jwtSigningKey string
 
-@description('Name of the existing Container Apps Environment to deploy into.')
-param containerAppsEnvName string = 'trashanimal-env'
+// ── Log Analytics (required by Container Apps Environment) ──────────────────
 
-@description('Resource group containing the existing Container Apps Environment.')
-param containerAppsEnvRg string = 'trashanimal-rg'
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: 'planit-logs'
+  location: location
+  properties: {
+    sku: { name: 'PerGB2018' }
+    retentionInDays: 30
+  }
+}
 
-// ── Reference existing Container Apps Environment ───────────────────────────
-// Free tier allows only 1 environment per subscription; reuse trashanimal-env.
+// ── Container Apps Environment ──────────────────────────────────────────────
 
-resource env 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
-  name: containerAppsEnvName
-  scope: resourceGroup(containerAppsEnvRg)
+resource env 'Microsoft.App/managedEnvironments@2024-03-01' = {
+  name: 'planit-env'
+  location: location
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalytics.properties.customerId
+        sharedKey: logAnalytics.listKeys().primarySharedKey
+      }
+    }
+  }
 }
 
 // ── Container App ───────────────────────────────────────────────────────────
