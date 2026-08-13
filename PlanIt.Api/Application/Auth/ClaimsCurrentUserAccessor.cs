@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace PlanIt.Api.Application.Auth;
 
-// Replaces TemporaryCurrentUserAccessor now that real [Authorize] is turned on (step 3) — reads
-// the authenticated user's id from the "sub" claim minted by JwtTokenService.
+// Reads the authenticated user's id from the "sub" claim minted by JwtTokenService.
 public class ClaimsCurrentUserAccessor(IHttpContextAccessor httpContextAccessor) : ICurrentUserAccessor
 {
     public Guid UserId

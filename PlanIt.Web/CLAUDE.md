@@ -11,7 +11,7 @@ This file provides guidance to Claude Code when working with code in `PlanIt.Web
 
 ## Project Overview
 
-**PlanIt.Web** is the mobile-first React client for the PlanIt task board. It is a plain Node/npm project — **not** part of `PlanIt.slnx` (the .NET solution) — and builds/runs independently via `npm`. It currently talks to an **in-memory mocked API layer**, not a real backend: `PlanIt.Api` is still an unmodified scaffold (see [`PlanIt.Api/CLAUDE.md`](../PlanIt.Api/CLAUDE.md)), so there is nothing live to integrate against yet.
+**PlanIt.Web** is the mobile-first React client for the PlanIt task board. It is a plain Node/npm project — **not** part of `PlanIt.slnx` (the .NET solution) — and builds/runs independently via `npm`. It now talks to the **real `PlanIt.Api` backend** via a real fetch client (`src/api/httpClient.ts`), with SignalR live updates wired through `src/realtime/`. The old in-memory mock layer (`mockClient.ts`, `seedData.ts`) has been replaced — `src/api/*.ts` now call `apiFetch()` against `VITE_API_BASE_URL`.
 
 ## Stack
 
@@ -41,9 +41,9 @@ npm run preview   # serve the production build locally
 ```
 src/
   App.tsx, main.tsx
-  api/            — mocked API layer (see below)
+  api/            — real fetch-based API layer (see below)
   assets/
-  auth/           — mock auth scaffolding (see below)
+  auth/           — real JWT auth (see below)
   components/     — AppShell, Modal, TagInput, WorkItemCard, icons, initials helper
   features/
     projects/     — Board (dnd-kit), ProjectListPage, ProjectBoardPage, CreateProjectModal,
@@ -51,6 +51,7 @@ src/
     workitems/    — WorkItemForm (shared create/edit), CreateWorkItemModal, WorkItemDetailPage,
                      WorkItemDetailContent
   hooks/          — mutations.ts, queries.ts (TanStack Query wrappers over api/)
+  realtime/       — signalrClient.ts, connectionId.ts, useProjectRealtime.ts (SignalR live updates)
   router/         — AppRoutes.tsx
   styles/         — theme.css (single global stylesheet)
   types/          — domain.ts (shared TS types/DTOs)
@@ -70,34 +71,39 @@ Matches the master plan's hierarchy decision exactly:
   - `/project/:projectId/feature/:featureId/task/:taskId` — `WorkItemDetailPage kind="task"` (nested)
   - `*` — inline `NotFound`
 
-**GitHub Pages SPA fallback is decided, not open**: the `404.html` redirect trick (`rafgraph/spa-github-pages` pattern) — a `deploy/404.html` encodes the attempted deep-link path into a query string and redirects to `index.html`, which decodes it and calls `history.replaceState()` before React Router mounts. Chosen over hash-based routing for clean path-based URLs. **Not yet implemented** — no `404.html`, no restore-logic in `main.tsx` exist in this codebase yet; `vite.config.ts` also still needs its `base` set to the GitHub Pages subpath once that's wired up (exact value is DevOps/Hosting subplan's call, not yet written).
+**GitHub Pages SPA fallback is decided, not yet implemented**: the `404.html` redirect trick (`rafgraph/spa-github-pages` pattern) — a `deploy/404.html` encodes the attempted deep-link path into a query string and redirects to `index.html`, which decodes it and calls `history.replaceState()` before React Router mounts. Chosen over hash-based routing for clean path-based URLs. **Not yet built** — no `404.html`, no restore logic in `main.tsx`, and `vite.config.ts` still needs its `base` set to the GitHub Pages subpath (e.g. `'/PlanIt/'`). These land in the DevOps/Hosting subplan — see `planit-devops-hosting.md`.
 
-## The Mock API Layer (`src/api/`)
+## The API Layer (`src/api/`)
 
-**This is an in-memory mock, not a real fetch client.** `mockClient.ts` documents itself as a drop-in stand-in — a real implementation should swap its guts for `fetch()` while keeping the same exported function signatures, so treat every function in `src/api/*.ts` as the contract shape the real backend integration should match, not throwaway demo code.
+**This is a real fetch-based client** targeting `VITE_API_BASE_URL`. `httpClient.ts` is the transport — `apiFetch<T>()` sets `Authorization: Bearer`, `Content-Type: application/json`, and the `X-SignalR-Connection-Id` header (so the hub can exclude the originating client from its broadcast). A 401 on an authenticated call clears the session and lets `RequireAuth` redirect to `/login`.
 
-- **`mockClient.ts`** — `delay()`/`mutate()` helpers simulate ~350ms network latency (150ms for reorder). `mutate()` can throw `MockApiError` when a dev-only "chaos mode" toggle (checkbox in `AppShell`'s header) is enabled, to exercise optimistic-update revert paths. `nextId(prefix)` generates fake incrementing IDs (`p1001`, `w1002`, ...) — this is mock-only convenience; the real backend uses **client-generated GUIDs** per the master plan's idempotency decision, not sequential IDs.
-- **`seedData.ts`** — hardcoded seed: 5 `User`s, 3 `Project`s, `ProjectMember`s, 10 `WorkItem`s, plus `ALL_TAGS`.
-- **`projects.ts`** — `fetchProjects`, `fetchProjectBoard`, `createProject` (auto-adds creator as Owner).
-- **`projectMembers.ts`** — `fetchProjectMembers`, `addProjectMember` (409 if already a member), `removeProjectMember` (400 if removing the last Owner).
-- **`users.ts`** — `fetchUsers`, `fetchUser`, `searchUsers` (client-side substring filter).
-- **`workItems.ts`** — `fetchWorkItem`, `fetchFeature` (feature + child tasks), `createWorkItem` (enforces the Feature-no-parent / Task-parent-must-be-Feature invariant), `updateWorkItem` (partial patch), `countCascadeDeletions`, `reorderWorkItems` (array-position-based — **there is no `order`/`position` field in the real schema yet**, a known gap this mock surfaces rather than hides), `deleteWorkItem` (cascades to child tasks, returns `deletedIds`).
-- **`auth.ts`** — `mockLogin(user)` returns a fake bearer token string + 15-min expiry (the *lifetime* matches the master plan's JWT decision; the token itself is not a real JWT and there's no refresh-token rotation — `authStore.ts` just re-mints a token client-side on a timer at 80% of expiry).
+- **`httpClient.ts`** — `apiFetch<T>(path, options)` with `skipAuth` flag for register/login.
+- **`auth.ts`** — `register`, `login`, `refreshToken`, `logout` against real JWT endpoints.
+- **`projects.ts`** — `fetchProjects`, `fetchProjectBoard`, `createProject`.
+- **`projectMembers.ts`** — `fetchProjectMembers`, `addProjectMember`, `removeProjectMember`.
+- **`users.ts`** — `fetchUsers`, `fetchUser`, `searchUsers`.
+- **`workItems.ts`** — `fetchWorkItem`, `fetchFeature`, `createWorkItem`, `updateWorkItem`, `countCascadeDeletions`, `reorderWorkItems`, `deleteWorkItem` (returns `{ deletedIds }`).
+
+The function signatures here are the contract shape the backend satisfies — don't change them without a corresponding API change.
 
 ## Types (`src/types/domain.ts`)
 
 `Guid = string`, `User`, `Project`, `ProjectMember` / `ProjectMemberRole` (`Owner`|`Member`), `WorkItemType` (`Feature`|`Task`), `WorkItemStatus` (`ToDo`|`InProgress`|`Completed`, plus a `WORK_ITEM_STATUSES` array), `WorkItem` (single-table with `workItemType` discriminator, nullable `parentId`/`assigneeId` — matches the intended real schema shape), `MAX_TAGS_PER_WORK_ITEM = 3`. Tags are `string[]` directly on `WorkItem` — this already matches the decided backend schema (a native Postgres `text[]` column, per-project scoped, `CHECK (cardinality(tags) <= 3)`, no separate Tag entity/junction table; see [`PlanIt.Api/CLAUDE.md`](../PlanIt.Api/CLAUDE.md)), not a placeholder awaiting a future redesign.
 
-## Auth Scaffolding (`src/auth/`)
+## Auth (`src/auth/`)
 
-**There is no real authentication.** This is scaffolding shaped to match where real auth will plug in, not a security boundary:
+Real JWT auth — not a mock:
 
-- **`authStore.ts`** — a plain module-level singleton, deliberately not React Context (commented as needed so a future SignalR `accessTokenFactory` can read the token synchronously outside the component tree). Holds `accessToken`/`currentUser` in memory; `localStorage` persists only the last user *id* (`planit:currentUserId`) for auto-resume, not the token itself — consistent with the master plan's "access token in memory" decision.
+- **`authStore.ts`** — plain module-level singleton (not React Context, so the SignalR `accessTokenFactory` can read the token synchronously outside the component tree). Holds `accessToken`/`currentUser` in memory; `localStorage` persists only the refresh token and last user id for auto-resume. Proactive refresh timer fires at ~80% of the 15-minute TTL.
 - **`useAuth.ts`** — `useSyncExternalStore` hook over the singleton.
 - **`RequireAuth.tsx`** — redirects to `/login` if unauthenticated.
-- **`LoginPage.tsx`** — picks one of the 5 seeded users to "log in as." No password or credential entry at all.
+- **`LoginPage.tsx`** — real username/password form against `POST /auth/login`.
 
-When real auth lands, expect this layer to be substantially rewritten (real JWT, refresh rotation, `Authorization: Bearer` on every mock-replaced fetch call) rather than incrementally patched.
+## Real-time (`src/realtime/`)
+
+- **`signalrClient.ts`** — creates and manages the SignalR `HubConnection`, delivering `access_token` via query-string `accessTokenFactory`.
+- **`connectionId.ts`** — exposes the current connection ID so `httpClient.ts` can set the `X-SignalR-Connection-Id` header on mutations, enabling `GroupExcept` on the server.
+- **`useProjectRealtime.ts`** — React hook that joins a project group on mount and wires the 7 hub events to TanStack Query cache invalidations.
 
 ## Styling (`src/styles/theme.css`)
 
