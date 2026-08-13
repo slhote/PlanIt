@@ -38,10 +38,6 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
         external: true
         targetPort: 8080
         transport: 'auto'
-        // Sticky sessions keep a client pinned to one replica, preserving in-process SignalR
-        // group membership. Single-revision deployment makes this a no-op in practice, but it's
-        // the right default once scale-out is enabled.
-        stickySessions: { affinity: 'sticky' }
       }
       secrets: [
         { name: 'neon-connection-string', value: neonConnectionString }
