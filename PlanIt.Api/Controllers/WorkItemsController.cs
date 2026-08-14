@@ -11,7 +11,7 @@ namespace PlanIt.Api.Controllers;
 [ApiController]
 [Route("projects/{projectId:guid}/workitems")]
 [Authorize(Policy = "ProjectMember")]
-public class WorkItemsController(WorkItemService workItemService) : ControllerBase
+public class WorkItemsController(WorkItemService workItemService, SimilarTasksService similarTasksService) : ControllerBase
 {
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<WorkItemDto>> GetById(Guid projectId, Guid id) =>
@@ -46,9 +46,9 @@ public class WorkItemsController(WorkItemService workItemService) : ControllerBa
         [FromHeader(Name = "X-SignalR-Connection-Id")] string? originConnectionId = null) =>
         Ok(await workItemService.DeleteAsync(id, originConnectionId));
 
-    // Route locked now so the URL contract is stable; implementation is subplan 8 (Similar Tasks
-    // Suggestions), sequenced after Tags/Labels and seed data exist (planit-api-contracts-backend.md §8).
+    // Similar Tasks Suggestions (planit-similar-tasks-lexical-metadata.md): lexical + metadata
+    // signals, scored on-demand, same-project candidates only.
     [HttpGet("{id:guid}/similar-tasks")]
-    public IActionResult GetSimilarTasks(Guid projectId, Guid id) =>
-        StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<IReadOnlyList<SimilarWorkItemDto>>> GetSimilarTasks(Guid projectId, Guid id) =>
+        Ok(await similarTasksService.GetSimilarAsync(projectId, id));
 }

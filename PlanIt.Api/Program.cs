@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PlanIt.Api.Application;
 using PlanIt.Api.Application.Auth;
+using PlanIt.Api.Application.Similarity;
 using PlanIt.Api.Data;
 using PlanIt.Api.Data.Repositories;
 using PlanIt.Api.Domain.Entities;
@@ -47,6 +48,22 @@ builder.Services.AddScoped<WorkItemService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ProjectMemberService>();
 
+// Similar Tasks Suggestions (planit-similar-tasks-lexical-metadata.md).
+builder.Services.AddScoped<ISimilaritySignal, TagOverlapSignal>();
+builder.Services.AddScoped<ISimilaritySignal, AssigneeMatchSignal>();
+builder.Services.AddScoped<ISimilaritySignal, LexicalTextSignal>();
+builder.Services.AddScoped<ILexicalSimilarityStrategy>(sp =>
+{
+    var lexicalStrategy = sp.GetRequiredService<IOptions<SimilarTasksOptions>>().Value.LexicalStrategy;
+    return lexicalStrategy switch
+    {
+        "TfIdf" => new TfIdfLexicalStrategy(),
+        _ => new JaccardLexicalStrategy(),
+    };
+});
+builder.Services.AddScoped<WeightedSimilarityScorer>();
+builder.Services.AddScoped<SimilarTasksService>();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserAccessor, ClaimsCurrentUserAccessor>();
 
@@ -81,6 +98,9 @@ builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<JwtOptions>, JwtOptionsValidator>();
+
+builder.Services.AddOptions<SimilarTasksOptions>()
+    .Bind(builder.Configuration.GetSection(SimilarTasksOptions.SectionName));
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 

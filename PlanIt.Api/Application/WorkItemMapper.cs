@@ -23,4 +23,10 @@ internal static class WorkItemMapper
         workItem.CreatedAt,
         workItem.UpdatedAt,
         db.Entry(workItem).Property<uint>("xmin").CurrentValue);
+
+    public static WorkItemSummaryDto ToSummaryDto(WorkItem workItem) => new(
+        workItem.Id,
+        workItem.WorkItemType,
+        workItem.Title,
+        workItem.Status);
 }
