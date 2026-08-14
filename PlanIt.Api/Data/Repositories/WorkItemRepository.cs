@@ -28,6 +28,13 @@ public class WorkItemRepository : IWorkItemRepository
             .Where(w => w.AssigneeId == assigneeId)
             .ToListAsync();
 
+    public async Task<IReadOnlyList<WorkItem>> GetSimilarityCandidatesAsync(Guid projectId, Guid excludeWorkItemId) =>
+        await _db.WorkItems
+            .Where(w => w.ProjectId == projectId
+                && w.Id != excludeWorkItemId
+                && w.Status != WorkItemStatus.Completed)
+            .ToListAsync();
+
     public void Add(WorkItem workItem) => _db.WorkItems.Add(workItem);
 
     public void Remove(WorkItem workItem) => _db.WorkItems.Remove(workItem);

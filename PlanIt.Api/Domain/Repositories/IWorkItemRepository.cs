@@ -16,6 +16,10 @@ public interface IWorkItemRepository
     // "My tasks" filter (WorkItem(AssigneeId) index).
     Task<IReadOnlyList<WorkItem>> GetForAssigneeAsync(Guid assigneeId);
 
+    // Similar Tasks candidate pool: same project, excludes the reference item and Completed
+    // items (WorkItem(ProjectId, ParentId) index already anticipates this scan).
+    Task<IReadOnlyList<WorkItem>> GetSimilarityCandidatesAsync(Guid projectId, Guid excludeWorkItemId);
+
     void Add(WorkItem workItem);
     void Remove(WorkItem workItem);
     void RemoveRange(IEnumerable<WorkItem> workItems);
