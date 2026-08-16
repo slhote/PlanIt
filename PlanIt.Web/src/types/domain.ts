@@ -48,6 +48,19 @@ export interface WorkItem {
   updatedAt: string;
 }
 
+// Trimmed-down projection returned by the similar-tasks endpoint — not the full WorkItem shape.
+export interface WorkItemSummary {
+  id: Guid;
+  workItemType: WorkItemType;
+  title: string;
+  status: WorkItemStatus;
+}
+
+export interface SimilarWorkItem {
+  workItem: WorkItemSummary;
+  score: number;
+}
+
 export const MAX_TAGS_PER_WORK_ITEM = 3;
 
 // Fixed tag vocabulary for the tag picker's suggestions — a frontend-only concept (not server
