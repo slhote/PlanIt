@@ -6,6 +6,7 @@ import { Modal } from "../../components/Modal";
 import { initials } from "../../components/initials";
 import { WorkItemForm, statusLabel } from "./WorkItemForm";
 import { CreateWorkItemModal } from "./CreateWorkItemModal";
+import { SimilarWorkItems } from "./SimilarWorkItems";
 import { HikingShoeIcon, WorkItemTypeIcon } from "../../components/icons";
 import type { Guid, WorkItem } from "../../types/domain";
 
@@ -190,6 +191,8 @@ export function WorkItemDetailContent({
           )}
         </div>
       )}
+
+      {!editing && <SimilarWorkItems projectId={projectId} workItemId={workItemId} />}
 
       {confirmingDelete && (
         <Modal title={`Delete ${item.workItemType.toLowerCase()}?`} onClose={() => setConfirmingDelete(false)}>
