@@ -12,7 +12,7 @@ public class SimilarTasksService(IWorkItemRepository workItemRepository, Weighte
         var reference = await workItemRepository.GetByIdAsync(workItemId)
             ?? throw new TaskNotFoundException($"Work item {workItemId} not found.");
 
-        var candidates = await workItemRepository.GetSimilarityCandidatesAsync(projectId, workItemId);
+        var candidates = await workItemRepository.GetSimilarityCandidatesAsync(projectId, reference.Id, reference.ParentId);
 
         var ranked = scorer.Rank(reference, candidates);
 
