@@ -3,7 +3,7 @@ using PlanIt.Api.Domain.Entities;
 namespace PlanIt.Api.Application.Similarity;
 
 // Tokenizes Title + Description and delegates scoring to the configured
-// ILexicalSimilarityStrategy (Jaccard or TF-IDF, selected via SimilarTasks:LexicalStrategy).
+// ILexicalSimilarityStrategy (Jaccard or TF-IDF, selected via SimilarWorkItems:LexicalStrategy).
 public class LexicalTextSignal : ISimilaritySignal
 {
     private readonly ILexicalSimilarityStrategy _strategy;

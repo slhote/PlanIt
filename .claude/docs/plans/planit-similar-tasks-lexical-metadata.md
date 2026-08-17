@@ -14,7 +14,7 @@ This doc supersedes the generic [`similar-tasks-feature-planning.md`](similar-ta
 
 ## Decision: Jaccard vs. TF-IDF as a switchable flag
 
-Both lexical-similarity algorithms are implemented, selected via config (`SimilarTasks:LexicalStrategy`: `"Jaccard"` | `"TfIdf"`), rather than picking one. This is a strategy swap internal to `LexicalTextSignal`, not two competing weighted signals — avoids re-balancing scorer weights every time the strategy is toggled for evaluation.
+Both lexical-similarity algorithms are implemented, selected via config (`SimilarWorkItems:LexicalStrategy`: `"Jaccard"` | `"TfIdf"`), rather than picking one. This is a strategy swap internal to `LexicalTextSignal`, not two competing weighted signals — avoids re-balancing scorer weights every time the strategy is toggled for evaluation.
 
 **Design wrinkle:** TF-IDF needs corpus-wide statistics (document frequency across the whole candidate pool) that pairwise `Score(candidate, reference)` doesn't have access to; Jaccard is genuinely pairwise and doesn't need this. Resolved by giving `ISimilaritySignal` an explicit `Prepare(reference, candidates)` step, called once per request before the per-candidate scoring loop — a TF-IDF strategy builds its corpus stats there; Jaccard no-ops it. Signal instances are DI-registered `Scoped` (one per HTTP request), so holding precomputed state as private fields between `Prepare` and `Score` within one request is safe.
 
@@ -38,13 +38,13 @@ public interface ISimilaritySignal
 - **`LexicalTextSignal`** — tokenizes `Title + " " + Description` (lowercase, strip punctuation, basic stopword list), delegates to an injected `ILexicalSimilarityStrategy`:
   - `JaccardLexicalStrategy` — token-set Jaccard overlap, no `Prepare` needed.
   - `TfIdfLexicalStrategy` — `Prepare` builds per-token IDF across the candidate pool + reference; `Score` computes TF-IDF vectors and cosine similarity.
-  - Strategy selected at startup via `IOptions<SimilarTasksOptions>.LexicalStrategy`, resolved through a factory registration in `Program.cs`.
-- **`WeightedSimilarityScorer`** — takes `IEnumerable<ISimilaritySignal>` (DI-injected collection), computes weighted sum per candidate using `SimilarTasksOptions.Weights`, ranks descending, applies `MinScoreThreshold` and `MaxResults` (default 5, per the 3–5 cap already decided).
+  - Strategy selected at startup via `IOptions<SimilarWorkItemsOptions>.LexicalStrategy`, resolved through a factory registration in `Program.cs`.
+- **`WeightedSimilarityScorer`** — takes `IEnumerable<ISimilaritySignal>` (DI-injected collection), computes weighted sum per candidate using `SimilarWorkItemsOptions.Weights`, ranks descending, applies `MinScoreThreshold` and `MaxResults` (default 5, per the 3–5 cap already decided).
 - **`SimilarTasksService`** — orchestrates: candidate pool via repository, `scorer.Rank(reference, candidates)`, maps to DTOs. Concrete class, not interface-backed — matches `WorkItemService`/`ProjectService` convention (only repositories are interface-abstracted in this codebase).
 
-**`SimilarTasksOptions`** (bound from `appsettings.json`, following the `JwtOptions`/`CorsOptions` pattern in `Startup/Options/`):
+**`SimilarWorkItemsOptions`** (bound from `appsettings.json`, following the `JwtOptions`/`CorsOptions` pattern in `Startup/Options/`):
 ```json
-"SimilarTasks": {
+"SimilarWorkItems": {
   "LexicalStrategy": "Jaccard",
   "MaxResults": 5,
   "MinScoreThreshold": 0.0,
@@ -81,7 +81,7 @@ public async Task<ActionResult<IReadOnlyList<SimilarWorkItemDto>>> GetSimilarTas
 ## DI registration (`Program.cs`)
 
 ```csharp
-builder.Services.Configure<SimilarTasksOptions>(builder.Configuration.GetSection("SimilarTasks"));
+builder.Services.Configure<SimilarWorkItemsOptions>(builder.Configuration.GetSection("SimilarWorkItems"));
 builder.Services.AddScoped<ISimilaritySignal, TagOverlapSignal>();
 builder.Services.AddScoped<ISimilaritySignal, AssigneeMatchSignal>();
 builder.Services.AddScoped<ISimilaritySignal, LexicalTextSignal>();
@@ -113,7 +113,7 @@ Per repo convention ([`planit-api-contracts-backend.md`](planit-api-contracts-ba
 - `PlanIt.Api/Domain/Repositories/IWorkItemRepository.cs` + `Data/Repositories/WorkItemRepository.cs`
 - `PlanIt.Api/Application/Similarity/*` (new)
 - `PlanIt.Api/Contracts/WorkItems/SimilarWorkItemDto.cs` (new)
-- `PlanIt.Api/Startup/Options/SimilarTasksOptions.cs` (new)
+- `PlanIt.Api/Startup/Options/SimilarWorkItemsOptions.cs` (new)
 - `PlanIt.Api/Program.cs`
 - `PlanIt.Api/appsettings.json`
 - `PlanIt.Api.Tests/`
@@ -122,6 +122,6 @@ Per repo convention ([`planit-api-contracts-backend.md`](planit-api-contracts-ba
 
 1. `dotnet build` succeeds.
 2. `dotnet test` — new unit tests pass for both lexical strategies, tag/assignee signals, scorer ranking/threshold/cap logic.
-3. Manual: seed two projects with work items (some sharing tags/assignee, some with overlapping title keywords, some unrelated); hit `GET /projects/{id}/workitems/{id}/similar-tasks` with a valid Bearer token; confirm results ranked sensibly, capped at `MaxResults`, and toggling `SimilarTasks:LexicalStrategy` changes ranking without a code change.
+3. Manual: seed two projects with work items (some sharing tags/assignee, some with overlapping title keywords, some unrelated); hit `GET /projects/{id}/workitems/{id}/similar-tasks` with a valid Bearer token; confirm results ranked sensibly, capped at `MaxResults`, and toggling `SimilarWorkItems:LexicalStrategy` changes ranking without a code change.
 4. Confirm zero-candidate case returns `[]`, not an error.
 5. Confirm non-member access still gets 404 (regression check on existing `ProjectMember404ResultHandler`).

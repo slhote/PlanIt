@@ -23,7 +23,7 @@ public class WeightedSimilarityScorerTests
             [belowThreshold.Id] = 0.05,
         });
 
-        var scorer = CreateScorer([signal], new SimilarTasksOptions
+        var scorer = CreateScorer([signal], new SimilarWorkItemsOptions
         {
             MaxResults = 5,
             MinScoreThreshold = 0.1,
@@ -44,7 +44,7 @@ public class WeightedSimilarityScorerTests
         var candidates = Enumerable.Range(0, 10).Select(_ => WorkItemTestFactory.Create()).ToList();
         var signal = new StubSignal("A", candidates.ToDictionary(c => c.Id, _ => 1.0));
 
-        var scorer = CreateScorer([signal], new SimilarTasksOptions
+        var scorer = CreateScorer([signal], new SimilarWorkItemsOptions
         {
             MaxResults = 3,
             MinScoreThreshold = 0.0,
@@ -64,7 +64,7 @@ public class WeightedSimilarityScorerTests
         var candidates = new[] { candidate };
         var signal = new StubSignal("Unweighted", new Dictionary<Guid, double> { [candidate.Id] = 1.0 });
 
-        var scorer = CreateScorer([signal], new SimilarTasksOptions
+        var scorer = CreateScorer([signal], new SimilarWorkItemsOptions
         {
             MaxResults = 5,
             MinScoreThreshold = 0.0,
@@ -87,7 +87,7 @@ public class WeightedSimilarityScorerTests
         var signalA = new StubSignal("A", new Dictionary<Guid, double> { [candidate.Id] = 1.0 });
         var signalB = new StubSignal("B", new Dictionary<Guid, double> { [candidate.Id] = 0.5 });
 
-        var scorer = CreateScorer([signalA, signalB], new SimilarTasksOptions
+        var scorer = CreateScorer([signalA, signalB], new SimilarWorkItemsOptions
         {
             MaxResults = 5,
             MinScoreThreshold = 0.0,
@@ -99,7 +99,7 @@ public class WeightedSimilarityScorerTests
         Assert.Equal(0.6 * 1.0 + 0.4 * 0.5, ranked[0].Score, precision: 10);
     }
 
-    private static WeightedSimilarityScorer CreateScorer(IEnumerable<ISimilaritySignal> signals, SimilarTasksOptions options) =>
+    private static WeightedSimilarityScorer CreateScorer(IEnumerable<ISimilaritySignal> signals, SimilarWorkItemsOptions options) =>
         new(signals, Options.Create(options));
 
     private class StubSignal(string name, Dictionary<Guid, double> scoresByCandidateId) : ISimilaritySignal

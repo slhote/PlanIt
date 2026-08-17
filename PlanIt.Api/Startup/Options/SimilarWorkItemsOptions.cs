@@ -1,8 +1,8 @@
 namespace PlanIt.Api.Startup.Options;
 
-public class SimilarTasksOptions
+public class SimilarWorkItemsOptions
 {
-    public const string SectionName = "SimilarTasks";
+    public const string SectionName = "SimilarWorkItems";
 
     // "Jaccard" or "TfIdf" — selects the ILexicalSimilarityStrategy implementation at startup.
     public string LexicalStrategy { get; set; } = "Jaccard";

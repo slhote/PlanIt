@@ -5,7 +5,7 @@ using PlanIt.Api.Domain.Repositories;
 
 namespace PlanIt.Api.Application;
 
-public class SimilarTasksService(IWorkItemRepository workItemRepository, WeightedSimilarityScorer scorer)
+public class SimilarWorkItemsService(IWorkItemRepository workItemRepository, WeightedSimilarityScorer scorer)
 {
     public async Task<IReadOnlyList<SimilarWorkItemDto>> GetSimilarAsync(Guid projectId, Guid workItemId)
     {

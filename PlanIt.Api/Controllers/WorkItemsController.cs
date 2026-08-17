@@ -11,7 +11,7 @@ namespace PlanIt.Api.Controllers;
 [ApiController]
 [Route("projects/{projectId:guid}/workitems")]
 [Authorize(Policy = "ProjectMember")]
-public class WorkItemsController(WorkItemService workItemService, SimilarTasksService similarTasksService) : ControllerBase
+public class WorkItemsController(WorkItemService workItemService, SimilarWorkItemsService similarWorkItemsService) : ControllerBase
 {
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<WorkItemDto>> GetById(Guid projectId, Guid id) =>
@@ -50,5 +50,5 @@ public class WorkItemsController(WorkItemService workItemService, SimilarTasksSe
     // signals, scored on-demand, same-project candidates only.
     [HttpGet("{id:guid}/similar-tasks")]
     public async Task<ActionResult<IReadOnlyList<SimilarWorkItemDto>>> GetSimilarTasks(Guid projectId, Guid id) =>
-        Ok(await similarTasksService.GetSimilarAsync(projectId, id));
+        Ok(await similarWorkItemsService.GetSimilarAsync(projectId, id));
 }

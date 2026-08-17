@@ -14,7 +14,7 @@ The lexical+metadata MVP's `ISimilaritySignal` interface is deliberately extensi
 
 - **Option A: in-process via `Microsoft.ML.OnnxRuntime`** — run a pre-trained sentence-embedding model (e.g. `all-MiniLM-L6-v2`) exported to ONNX format directly inside `PlanIt.Api`. The ONNX export is a one-time offline step (commonly done with Python tooling, but that tooling isn't part of the running system — it produces a model file checked in or downloaded at build/deploy time). Runtime is pure C#, no network call, no second process.
 - **Option B: a separate local Python microservice** (FastAPI + `sentence-transformers`) the API calls over internal HTTP. Genuinely a second running process — needs its own local dev setup (own venv/deps, a way to start it alongside the API, e.g. added to whatever local dev tooling already runs `PlanIt.Api` + Postgres). More mature ML tooling than the ONNX route, at the cost of that second process.
-- **Startup selection**: `SimilarTasks:EmbeddingSource: "Onnx" | "Python"` config, read once at startup, determines which `IEmbeddingGenerator` implementation gets DI-registered. No runtime toggle — changing it means restarting the app.
+- **Startup selection**: `SimilarWorkItems:EmbeddingSource: "Onnx" | "Python"` config, read once at startup, determines which `IEmbeddingGenerator` implementation gets DI-registered. No runtime toggle — changing it means restarting the app.
 
 ## Storage: separate tables per source, write to both, read from one
 
@@ -22,7 +22,7 @@ Embeddings from different models live in different vector spaces — cosine simi
 
 **Plan:** separate tables per source (`WorkItemEmbeddingOnnx`, `WorkItemEmbeddingPython`) rather than one table with a discriminator column.
 
-**Confirmed: write to both, read from one.** Every trigger path (event-driven, sweep, recompute-all) computes and stores into *both* tables unconditionally — not just the startup-selected source. `SimilarTasks:EmbeddingSource` only controls which table the live `similar-tasks` endpoint *reads* from for scoring. This is what delivers the "evaluate which one I prefer long-term" goal — both stay populated and comparable side by side the whole time; switching which one is live is a config change + restart, not a backfill.
+**Confirmed: write to both, read from one.** Every trigger path (event-driven, sweep, recompute-all) computes and stores into *both* tables unconditionally — not just the startup-selected source. `SimilarWorkItems:EmbeddingSource` only controls which table the live `similar-tasks` endpoint *reads* from for scoring. This is what delivers the "evaluate which one I prefer long-term" goal — both stay populated and comparable side by side the whole time; switching which one is live is a config change + restart, not a backfill.
 
 ## Local-first — deployment ramifications flagged, not designed
 
@@ -46,7 +46,7 @@ Only a real concern if treating the call as network-flaky — relevant to Option
 
 ## Shared-seam implication for the lexical/metadata MVP
 
-The `Prepare(reference, candidates)` lifecycle hook on `ISimilaritySignal` (introduced in the lexical/metadata MVP for `TfIdfLexicalStrategy`'s corpus stats) is the same seam `EmbeddingSimilaritySignal` will use — `Prepare` batch-fetches precomputed vectors for the reference + candidate pool (from whichever table `SimilarTasks:EmbeddingSource` selects) rather than doing per-candidate lookups inside `Score`. No `ISimilaritySignal` interface change anticipated when embeddings land.
+The `Prepare(reference, candidates)` lifecycle hook on `ISimilaritySignal` (introduced in the lexical/metadata MVP for `TfIdfLexicalStrategy`'s corpus stats) is the same seam `EmbeddingSimilaritySignal` will use — `Prepare` batch-fetches precomputed vectors for the reference + candidate pool (from whichever table `SimilarWorkItems:EmbeddingSource` selects) rather than doing per-candidate lookups inside `Score`. No `ISimilaritySignal` interface change anticipated when embeddings land.
 
 ## Next steps
 
