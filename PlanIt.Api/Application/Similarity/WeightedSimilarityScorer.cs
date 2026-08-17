@@ -16,7 +16,7 @@ public class WeightedSimilarityScorer(IEnumerable<ISimilaritySignal> signals, IO
 
         return candidates
             .Select(candidate => (WorkItem: candidate, Score: ComputeWeightedScore(candidate, reference, signalList, settings.Weights)))
-            .Where(r => r.Score >= settings.MinScoreThreshold)
+            .Where(r => r.Score > 0.0 && r.Score >= settings.MinScoreThreshold)
             .OrderByDescending(r => r.Score)
             .Take(settings.MaxResults)
             .ToList();
