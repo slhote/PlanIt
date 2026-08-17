@@ -1,5 +1,5 @@
 import { apiFetch } from "./httpClient";
-import type { Guid, WorkItem, WorkItemStatus, WorkItemType } from "../types/domain";
+import type { Guid, SimilarWorkItem, WorkItem, WorkItemStatus, WorkItemType } from "../types/domain";
 
 export async function fetchWorkItem(projectId: Guid, id: Guid): Promise<WorkItem> {
   return apiFetch<WorkItem>(`/projects/${projectId}/workitems/${id}`);
@@ -63,4 +63,8 @@ export async function deleteWorkItem(projectId: Guid, id: Guid): Promise<{ delet
   return apiFetch<{ deletedIds: Guid[] }>(`/projects/${projectId}/workitems/${id}`, {
     method: "DELETE",
   });
+}
+
+export async function fetchSimilarWorkItems(projectId: Guid, id: Guid): Promise<SimilarWorkItem[]> {
+  return apiFetch<SimilarWorkItem[]>(`/projects/${projectId}/workitems/${id}/similar-tasks`);
 }
