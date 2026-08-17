@@ -54,7 +54,7 @@ builder.Services.AddScoped<ISimilaritySignal, AssigneeMatchSignal>();
 builder.Services.AddScoped<ISimilaritySignal, LexicalTextSignal>();
 builder.Services.AddScoped<ILexicalSimilarityStrategy>(sp =>
 {
-    var lexicalStrategy = sp.GetRequiredService<IOptions<SimilarTasksOptions>>().Value.LexicalStrategy;
+    var lexicalStrategy = sp.GetRequiredService<IOptions<SimilarWorkItemsOptions>>().Value.LexicalStrategy;
     return lexicalStrategy switch
     {
         "TfIdf" => new TfIdfLexicalStrategy(),
@@ -62,7 +62,7 @@ builder.Services.AddScoped<ILexicalSimilarityStrategy>(sp =>
     };
 });
 builder.Services.AddScoped<WeightedSimilarityScorer>();
-builder.Services.AddScoped<SimilarTasksService>();
+builder.Services.AddScoped<SimilarWorkItemsService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserAccessor, ClaimsCurrentUserAccessor>();
@@ -99,8 +99,8 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<JwtOptions>, JwtOptionsValidator>();
 
-builder.Services.AddOptions<SimilarTasksOptions>()
-    .Bind(builder.Configuration.GetSection(SimilarTasksOptions.SectionName));
+builder.Services.AddOptions<SimilarWorkItemsOptions>()
+    .Bind(builder.Configuration.GetSection(SimilarWorkItemsOptions.SectionName));
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 

@@ -4,7 +4,7 @@ using PlanIt.Api.Startup.Options;
 
 namespace PlanIt.Api.Application.Similarity;
 
-public class WeightedSimilarityScorer(IEnumerable<ISimilaritySignal> signals, IOptions<SimilarTasksOptions> options)
+public class WeightedSimilarityScorer(IEnumerable<ISimilaritySignal> signals, IOptions<SimilarWorkItemsOptions> options)
 {
     public IReadOnlyList<(WorkItem WorkItem, double Score)> Rank(WorkItem reference, IReadOnlyList<WorkItem> candidates)
     {

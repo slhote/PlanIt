@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useFeatureQuery, useProjectMembersQuery, useWorkItemQuery } from "../../hooks/queries";
 import { useDeleteWorkItemMutation, useUpdateWorkItemMutation } from "../../hooks/mutations";
 import { Modal } from "../../components/Modal";
@@ -22,6 +22,8 @@ export function WorkItemDetailContent({
   parentFeatureId?: Guid;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = location.state as { from?: string; fromLabel?: string } | null;
   const featureQuery = useFeatureQuery(projectId, kind === "feature" ? workItemId : undefined);
   const taskQuery = useWorkItemQuery(projectId, kind === "task" ? workItemId : undefined);
   const parentFeatureQuery = useWorkItemQuery(projectId, kind === "task" ? parentFeatureId : undefined);
@@ -58,17 +60,34 @@ export function WorkItemDetailContent({
     );
   }
 
-  const backHref = kind === "task" && (parentFeatureId ?? item.parentId)
+  const defaultBackHref = kind === "task" && (parentFeatureId ?? item.parentId)
     ? `/project/${projectId}/feature/${parentFeatureId ?? item.parentId}`
     : `/project/${projectId}`;
-  const backLabel =
+  const defaultBackLabel =
     kind === "task" && parentFeatureQuery.data ? `← Back to ${parentFeatureQuery.data.title}` : "← Back to board";
+
+  const backHref = navState?.from ?? defaultBackHref;
+  const backLabel = navState?.from ? `← Back to ${navState.fromLabel ?? "previous item"}` : defaultBackLabel;
+  const boardHref = `/project/${projectId}`;
 
   return (
     <div>
-      <button type="button" className="btn btn-ghost btn-sm" style={{ marginBottom: "var(--space-4)" }} onClick={() => navigate(backHref)}>
-        {backLabel}
-      </button>
+      <div className="row-between" style={{ marginBottom: "var(--space-4)" }}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate(backHref)}>
+          {backLabel}
+        </button>
+        {backHref !== boardHref && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            aria-label="Close and return to board"
+            title="Close and return to board"
+            onClick={() => navigate(boardHref)}
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       {editing ? (
         <div className="card">
@@ -176,7 +195,11 @@ export function WorkItemDetailContent({
                   type="button"
                   className="card card-interactive"
                   style={{ textAlign: "left", width: "100%" }}
-                  onClick={() => navigate(`/project/${projectId}/feature/${workItemId}/task/${task.id}`)}
+                  onClick={() =>
+                    navigate(`/project/${projectId}/feature/${workItemId}/task/${task.id}`, {
+                      state: { from: location.pathname, fromLabel: item.title },
+                    })
+                  }
                 >
                   <div className="row-between">
                     <span className="row" style={{ gap: "var(--space-2)" }}>
@@ -192,7 +215,7 @@ export function WorkItemDetailContent({
         </div>
       )}
 
-      {!editing && <SimilarWorkItems projectId={projectId} workItemId={workItemId} />}
+      {!editing && <SimilarWorkItems projectId={projectId} workItemId={workItemId} currentItemTitle={item.title} />}
 
       {confirmingDelete && (
         <Modal title={`Delete ${item.workItemType.toLowerCase()}?`} onClose={() => setConfirmingDelete(false)}>

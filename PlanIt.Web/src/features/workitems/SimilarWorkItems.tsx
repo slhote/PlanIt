@@ -1,11 +1,20 @@
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useSimilarWorkItemsQuery } from "../../hooks/queries";
 import { WorkItemTypeIcon } from "../../components/icons";
 import { statusLabel } from "./WorkItemForm";
 import type { Guid } from "../../types/domain";
 
-export function SimilarWorkItems({ projectId, workItemId }: { projectId: Guid; workItemId: Guid }) {
+export function SimilarWorkItems({
+  projectId,
+  workItemId,
+  currentItemTitle,
+}: {
+  projectId: Guid;
+  workItemId: Guid;
+  currentItemTitle: string;
+}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { data } = useSimilarWorkItemsQuery(projectId, workItemId);
   const similarItems = data ?? [];
 
@@ -28,7 +37,7 @@ export function SimilarWorkItems({ projectId, workItemId }: { projectId: Guid; w
               type="button"
               className="card card-interactive"
               style={{ textAlign: "left", width: "100%" }}
-              onClick={() => navigate(href)}
+              onClick={() => navigate(href, { state: { from: location.pathname, fromLabel: currentItemTitle } })}
             >
               <div className="row-between">
                 <span className="row" style={{ gap: "var(--space-2)" }}>
