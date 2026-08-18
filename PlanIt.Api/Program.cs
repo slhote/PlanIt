@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using PlanIt.Api.Application;
 using PlanIt.Api.Application.Auth;
 using PlanIt.Api.Application.Similarity;
+using PlanIt.Api.Application.Similarity.Embeddings;
 using PlanIt.Api.Data;
 using PlanIt.Api.Data.Repositories;
 using PlanIt.Api.Domain.Entities;
@@ -68,6 +69,16 @@ builder.Services.AddScoped<ILexicalSimilarityStrategy>(sp =>
 });
 builder.Services.AddScoped<WeightedSimilarityScorer>();
 builder.Services.AddScoped<SimilarWorkItemsService>();
+
+// Semantic embeddings (planit-similar-tasks-semantic-embeddings.md). Singleton: InferenceSession
+// + BertTokenizer are expensive to construct and thread-safe for inference, reused across
+// requests/background-worker items. Not resolved anywhere yet at this step -- wired into the
+// background worker/signal in later steps, so a missing model file doesn't break `dotnet run`
+// until this is actually used.
+builder.Services.AddOptions<OnnxEmbeddingOptions>()
+    .Bind(builder.Configuration.GetSection(OnnxEmbeddingOptions.SectionName));
+builder.Services.AddSingleton<IValidateOptions<OnnxEmbeddingOptions>, OnnxEmbeddingOptionsValidator>();
+builder.Services.AddSingleton<OnnxEmbeddingGenerator>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserAccessor, ClaimsCurrentUserAccessor>();
