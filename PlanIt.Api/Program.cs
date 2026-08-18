@@ -80,6 +80,16 @@ builder.Services.AddOptions<OnnxEmbeddingOptions>()
 builder.Services.AddSingleton<IValidateOptions<OnnxEmbeddingOptions>, OnnxEmbeddingOptionsValidator>();
 builder.Services.AddSingleton<OnnxEmbeddingGenerator>();
 
+// Python generation source (Option B) -- typed HttpClient, not resolved anywhere yet (same
+// "not wired to anything until the background worker lands" note as the ONNX generator above).
+builder.Services.AddOptions<PythonEmbeddingOptions>()
+    .Bind(builder.Configuration.GetSection(PythonEmbeddingOptions.SectionName));
+builder.Services.AddHttpClient<PythonEmbeddingGenerator>((sp, client) =>
+{
+    var baseUrl = sp.GetRequiredService<IOptions<PythonEmbeddingOptions>>().Value.BaseUrl;
+    client.BaseAddress = new Uri(baseUrl);
+});
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserAccessor, ClaimsCurrentUserAccessor>();
 
