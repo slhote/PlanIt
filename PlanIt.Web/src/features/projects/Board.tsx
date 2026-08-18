@@ -124,18 +124,16 @@ export function Board({
   assigneeOf,
   subtaskProgressOf,
   onOpenItem,
-  onStatusChange,
-  onReorder,
+  onMove,
 }: {
   itemsByStatus: ColumnMap;
   assigneeOf: (item: WorkItem) => User | undefined;
   subtaskProgressOf: (item: WorkItem) => { done: number; total: number } | undefined;
   onOpenItem: (item: WorkItem) => void;
-  onStatusChange: (item: WorkItem, newStatus: WorkItemStatus) => void;
-  /** orderedItems is the destination column's final order after the move; movedItemId identifies
-   * which one to persist a new `order` for — its neighbors in orderedItems are used to compute a
-   * fractional midpoint (planit-api-contracts-backend.md §6), no other item's order changes. */
-  onReorder: (orderedItems: WorkItem[], movedItemId: Guid) => void;
+  /** Fired once per drag with whichever of status/order actually changed — a cross-column drag
+   * changes both, and they're reported together so the caller can persist them in a single PATCH
+   * instead of two racing requests for the same item. */
+  onMove: (item: WorkItem, updates: { status?: WorkItemStatus; order?: number }) => void;
 }) {
   // Board owns the live drag arrangement locally (standard dnd-kit multi-container
   // pattern) so cards can visually move between columns mid-drag; it resyncs from
@@ -207,15 +205,18 @@ export function Board({
     }
 
     const movedItem = finalColumns[overContainer].find((i) => i.id === active.id);
-    if (movedItem && movedItem.status !== overContainer) {
-      onStatusChange(movedItem, overContainer);
-    }
+    if (!movedItem) return;
 
+    const statusChanged = movedItem.status !== overContainer;
+    const updates: { status?: WorkItemStatus; order?: number } = {};
+    if (statusChanged) updates.status = overContainer;
     // Only the destination column's final order matters — the source column's remaining items
     // keep their existing `order` values unchanged (that's the point of fractional indexing, no
     // sibling renumbering needed when an item leaves).
-    if (positionChanged) {
-      onReorder(finalColumns[overContainer], active.id as Guid);
+    if (positionChanged) updates.order = computeNewOrder(finalColumns[overContainer], active.id as Guid);
+
+    if (statusChanged || positionChanged) {
+      onMove(movedItem, updates);
     }
   }
 

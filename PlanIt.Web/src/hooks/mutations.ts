@@ -32,45 +32,31 @@ export function useCreateWorkItemMutation(projectId: Guid) {
   });
 }
 
-/** Used by drag-and-drop: optimistic cache write, revert on failure. */
-export function useUpdateWorkItemStatusMutation(projectId: Guid) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, status }: { id: Guid; status: WorkItemStatus }) => updateWorkItem(projectId, id, { status }),
-    onMutate: async ({ id, status }) => {
-      await queryClient.cancelQueries({ queryKey: ["project", projectId] });
-      const previous = queryClient.getQueryData<ProjectBoard>(["project", projectId]);
-      queryClient.setQueryData<ProjectBoard>(["project", projectId], (old) =>
-        old ? { ...old, workItems: old.workItems.map((w) => (w.id === id ? { ...w, status } : w)) } : old,
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["project", projectId], context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-    },
-  });
-}
-
 /**
- * Used by drag-and-drop reordering within/across columns. There's no bulk reorder endpoint — a
- * move persists as a single PATCH of the moved item's fractional `order` (the board computes the
- * new value from its neighbors; see computeNewOrder in Board.tsx). Optimistic cache write, revert
- * on failure, same shape as the status mutation above.
+ * Used by drag-and-drop. A cross-column drag changes both `status` and `order` at once — both are
+ * sent in a single PATCH so the move persists as one write instead of two concurrent requests for
+ * the same item (which would otherwise race each other's optimistic-concurrency check on the
+ * server). Optimistic cache write, revert on failure.
  */
-export function useUpdateWorkItemOrderMutation(projectId: Guid) {
+export function useMoveWorkItemMutation(projectId: Guid) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, order }: { id: Guid; order: number }) => updateWorkItem(projectId, id, { order }),
-    onMutate: async ({ id, order }) => {
+    mutationFn: ({ id, status, order }: { id: Guid; status?: WorkItemStatus; order?: number }) =>
+      updateWorkItem(projectId, id, { status, order }),
+    onMutate: async ({ id, status, order }) => {
       await queryClient.cancelQueries({ queryKey: ["project", projectId] });
       const previous = queryClient.getQueryData<ProjectBoard>(["project", projectId]);
       queryClient.setQueryData<ProjectBoard>(["project", projectId], (old) =>
-        old ? { ...old, workItems: old.workItems.map((w) => (w.id === id ? { ...w, order } : w)) } : old,
+        old
+          ? {
+              ...old,
+              workItems: old.workItems.map((w) =>
+                w.id === id
+                  ? { ...w, ...(status !== undefined ? { status } : {}), ...(order !== undefined ? { order } : {}) }
+                  : w,
+              ),
+            }
+          : old,
       );
       return { previous };
     },
