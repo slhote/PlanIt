@@ -4,12 +4,13 @@ import { useProjectBoardQuery, useProjectMembersQuery } from "../../hooks/querie
 import { useUpdateWorkItemStatusMutation, useUpdateWorkItemOrderMutation } from "../../hooks/mutations";
 import { Board, computeNewOrder } from "./Board";
 import { CreateWorkItemModal } from "../workitems/CreateWorkItemModal";
+import { WorkItemTypePicker } from "../workitems/WorkItemTypePicker";
 import { CollaboratorsModal } from "./CollaboratorsModal";
 import { setLastProjectId } from "./lastProject";
 import { MapIcon } from "../../components/icons";
 import { statusLabel } from "../workitems/WorkItemForm";
 import { useProjectRealtime } from "../../realtime/useProjectRealtime";
-import type { Guid, User, WorkItem, WorkItemStatus } from "../../types/domain";
+import type { Guid, User, WorkItem, WorkItemStatus, WorkItemType } from "../../types/domain";
 
 export function ProjectBoardPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -21,7 +22,8 @@ export function ProjectBoardPage() {
   useProjectRealtime(projectId);
 
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | "unassigned" | Guid>("all");
-  const [creating, setCreating] = useState(false);
+  const [pickingType, setPickingType] = useState(false);
+  const [creatingType, setCreatingType] = useState<WorkItemType | null>(null);
   const [managingCollaborators, setManagingCollaborators] = useState(false);
   const [celebration, setCelebration] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -188,7 +190,7 @@ export function ProjectBoardPage() {
           <div className="empty-state-icon">✨</div>
           <h3>This board is empty</h3>
           <p>Add your first Feature or Task to start planning the work.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+          <button type="button" className="btn btn-primary" onClick={() => setPickingType(true)}>
             + Add work item
           </button>
         </div>
@@ -204,12 +206,27 @@ export function ProjectBoardPage() {
       )}
 
       {topLevelItems.length > 0 && (
-        <button type="button" className="fab" onClick={() => setCreating(true)} aria-label="Add work item">
+        <button type="button" className="fab" onClick={() => setPickingType(true)} aria-label="Add work item">
           +
         </button>
       )}
 
-      {creating && projectId && <CreateWorkItemModal projectId={projectId} onClose={() => setCreating(false)} />}
+      {pickingType && (
+        <WorkItemTypePicker
+          onClose={() => setPickingType(false)}
+          onSelect={(type) => {
+            setPickingType(false);
+            setCreatingType(type);
+          }}
+        />
+      )}
+      {creatingType && projectId && (
+        <CreateWorkItemModal
+          projectId={projectId}
+          lockedType={creatingType}
+          onClose={() => setCreatingType(null)}
+        />
+      )}
       {managingCollaborators && projectId && (
         <CollaboratorsModal projectId={projectId} onClose={() => setManagingCollaborators(false)} />
       )}

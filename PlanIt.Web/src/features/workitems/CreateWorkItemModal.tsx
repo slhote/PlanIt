@@ -24,7 +24,7 @@ export function CreateWorkItemModal({
   const featureOptions = (boardQuery.data?.workItems ?? []).filter((w) => w.workItemType === "Feature");
 
   return (
-    <Modal title={lockedType === "Task" && lockedParentId ? "Add task" : "New work item"} onClose={onClose}>
+    <Modal title={modalTitle(lockedType, lockedParentId)} onClose={onClose}>
       <WorkItemForm
         mode="create"
         lockedType={lockedType}
@@ -48,4 +48,11 @@ export function CreateWorkItemModal({
       />
     </Modal>
   );
+}
+
+function modalTitle(lockedType: WorkItemType | undefined, lockedParentId: Guid | null | undefined): string {
+  if (lockedType === "Task" && lockedParentId) return "Add task";
+  if (lockedType === "Feature") return "New feature";
+  if (lockedType === "Task") return "New task";
+  return "New work item";
 }

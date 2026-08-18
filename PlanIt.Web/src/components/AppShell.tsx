@@ -3,6 +3,7 @@ import { useAuth } from "../auth/useAuth";
 import { clearSession, getRefreshToken } from "../auth/authStore";
 import { logout } from "../api/auth";
 import { initials } from "./initials";
+import { MapIcon } from "./icons";
 
 export function AppShell() {
   const { user } = useAuth();
@@ -28,6 +29,9 @@ export function AppShell() {
 
         {user && (
           <div className="row">
+            <Link to="/projects" className="icon-btn" title="My projects" aria-label="My projects">
+              <MapIcon size={18} />
+            </Link>
             <span className="avatar avatar-sm" title={user.username}>
               {initials(user.username)}
             </span>
