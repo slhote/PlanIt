@@ -68,3 +68,11 @@ export async function deleteWorkItem(projectId: Guid, id: Guid): Promise<{ delet
 export async function fetchSimilarWorkItems(projectId: Guid, id: Guid): Promise<SimilarWorkItem[]> {
   return apiFetch<SimilarWorkItem[]>(`/projects/${projectId}/workitems/${id}/similar-tasks`);
 }
+
+// Bulk recompute of semantic embeddings for every work item in the project -- project-scoped,
+// not item-scoped, hence no /workitems segment (planit-similar-tasks-semantic-embeddings.md).
+export async function recomputeSimilarTasks(projectId: Guid): Promise<{ enqueuedCount: number }> {
+  return apiFetch<{ enqueuedCount: number }>(`/projects/${projectId}/similar-tasks/recompute`, {
+    method: "POST",
+  });
+}
