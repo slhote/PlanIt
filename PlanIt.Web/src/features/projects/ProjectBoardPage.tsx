@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useProjectBoardQuery, useProjectMembersQuery } from "../../hooks/queries";
-import { useUpdateWorkItemStatusMutation, useUpdateWorkItemOrderMutation } from "../../hooks/mutations";
-import { Board, computeNewOrder } from "./Board";
+import { useMoveWorkItemMutation } from "../../hooks/mutations";
+import { Board } from "./Board";
 import { CreateWorkItemModal } from "../workitems/CreateWorkItemModal";
 import { WorkItemTypePicker } from "../workitems/WorkItemTypePicker";
 import { CollaboratorsModal } from "./CollaboratorsModal";
@@ -17,8 +17,7 @@ export function ProjectBoardPage() {
   const navigate = useNavigate();
   const boardQuery = useProjectBoardQuery(projectId);
   const membersQuery = useProjectMembersQuery(projectId);
-  const updateStatus = useUpdateWorkItemStatusMutation(projectId as Guid);
-  const reorder = useUpdateWorkItemOrderMutation(projectId as Guid);
+  const move = useMoveWorkItemMutation(projectId as Guid);
   useProjectRealtime(projectId);
 
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | "unassigned" | Guid>("all");
@@ -88,31 +87,21 @@ export function ProjectBoardPage() {
     }
   }
 
-  function handleStatusChange(item: WorkItem, newStatus: WorkItemStatus) {
-    updateStatus.mutate(
-      { id: item.id, status: newStatus },
+  function handleMove(item: WorkItem, updates: { status?: WorkItemStatus; order?: number }) {
+    move.mutate(
+      { id: item.id, ...updates },
       {
         onSuccess: () => {
-          if (newStatus === "Completed") {
+          if (updates.status === "Completed") {
             setCelebration(`Nice work — "${item.title}" is complete.`);
           }
         },
         onError: (err) => {
-          setSaveError(
-            `Couldn't move "${item.title}" to ${statusLabel(newStatus)} — ${(err as Error).message}`,
-          );
-        },
-      },
-    );
-  }
-
-  function handleReorder(orderedItems: WorkItem[], movedItemId: Guid) {
-    const order = computeNewOrder(orderedItems, movedItemId);
-    reorder.mutate(
-      { id: movedItemId, order },
-      {
-        onError: (err) => {
-          setSaveError(`Couldn't save the new order — ${(err as Error).message}`);
+          const message =
+            updates.status !== undefined
+              ? `Couldn't move "${item.title}" to ${statusLabel(updates.status)} — ${(err as Error).message}`
+              : `Couldn't save the new order — ${(err as Error).message}`;
+          setSaveError(message);
         },
       },
     );
@@ -200,8 +189,7 @@ export function ProjectBoardPage() {
           assigneeOf={(item) => (item.assigneeId ? usersById.get(item.assigneeId) : undefined)}
           subtaskProgressOf={subtaskProgressOf}
           onOpenItem={handleOpenItem}
-          onStatusChange={handleStatusChange}
-          onReorder={handleReorder}
+          onMove={handleMove}
         />
       )}
 
