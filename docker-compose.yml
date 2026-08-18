@@ -38,9 +38,36 @@ services:
       # JWT signing key — required. Set via .env or export JWT_SIGNING_KEY=... before running.
       Jwt__SigningKey: "${JWT_SIGNING_KEY}"
       APPLY_MIGRATIONS: "true"
+      # Compose DNS name, not localhost -- reachable regardless of SimilarWorkItems__EmbeddingSource
+      # since the background worker always writes to both tables (planit-similar-tasks-semantic-
+      # embeddings.md). Note: the API image doesn't bake in the ONNX model file (see
+      # PlanIt.Api/Models/README.md), so the ONNX side no-ops gracefully here too unless that's
+      # mounted/copied in separately -- this profile is for exercising the Python path.
+      PythonEmbedding__BaseUrl: "http://embedding-service:8000"
     depends_on:
       postgres:
         condition: service_healthy
+      embedding-service:
+        condition: service_healthy
+    profiles:
+      - full-stack
+
+  embedding-service:
+    # Python generation source (Option B) -- see planit-similar-tasks-semantic-embeddings.md.
+    build:
+      context: PlanIt.EmbeddingService
+    container_name: planit-embedding-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      # sentence-transformers/all-mpnet-base-v2 loads at container startup (Dockerfile pre-downloads
+      # the model at build time, but SentenceTransformer(...) still re-initializes it on boot).
+      start_period: 40s
     profiles:
       - full-stack
 
