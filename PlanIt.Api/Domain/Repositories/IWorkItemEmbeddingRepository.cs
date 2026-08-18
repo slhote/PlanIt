@@ -13,4 +13,9 @@ public interface IWorkItemEmbeddingRepository
     // Insert-or-update, keyed on WorkItemId. Used by the background worker (event-driven queue,
     // periodic sweep, recompute-all) — every trigger writes to both sources unconditionally.
     Task UpsertAsync(EmbeddingSource source, Guid workItemId, Vector vector, string sourceText, DateTimeOffset computedAt);
+
+    // The periodic sweep: WorkItems with no row in either table yet, or whose stored SourceText
+    // no longer matches Title + " " + Description. A fresh deploy has zero embeddings, so the
+    // first sweep run doubles as the one-time backfill — no separate backfill job needed.
+    Task<IReadOnlyList<Guid>> GetStaleOrMissingWorkItemIdsAsync();
 }

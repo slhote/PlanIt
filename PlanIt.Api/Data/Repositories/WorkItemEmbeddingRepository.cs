@@ -75,4 +75,31 @@ public class WorkItemEmbeddingRepository : IWorkItemEmbeddingRepository
                 throw new ArgumentOutOfRangeException(nameof(source), source, null);
         }
     }
+
+    public async Task<IReadOnlyList<Guid>> GetStaleOrMissingWorkItemIdsAsync()
+    {
+        var workItems = await _db.WorkItems
+            .Select(w => new { w.Id, w.Title, w.Description })
+            .ToListAsync();
+
+        var onnxSourceTexts = await _db.WorkItemEmbeddingsOnnx
+            .ToDictionaryAsync(e => e.WorkItemId, e => e.SourceText);
+        var pythonSourceTexts = await _db.WorkItemEmbeddingsPython
+            .ToDictionaryAsync(e => e.WorkItemId, e => e.SourceText);
+
+        var stale = new List<Guid>();
+        foreach (var w in workItems)
+        {
+            var currentSourceText = $"{w.Title} {w.Description}".Trim();
+            var onnxCurrent = onnxSourceTexts.TryGetValue(w.Id, out var onnxText) && onnxText == currentSourceText;
+            var pythonCurrent = pythonSourceTexts.TryGetValue(w.Id, out var pythonText) && pythonText == currentSourceText;
+
+            if (!onnxCurrent || !pythonCurrent)
+            {
+                stale.Add(w.Id);
+            }
+        }
+
+        return stale;
+    }
 }
