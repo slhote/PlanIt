@@ -34,13 +34,18 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<PlanItDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        // Registers Npgsql's vector(N) type mapping (Pgvector.EntityFrameworkCore) for the
+        // Similar Tasks semantic-embeddings tables (planit-similar-tasks-semantic-embeddings.md).
+        npgsqlOptions => npgsqlOptions.UseVector()));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
 builder.Services.AddScoped<IWorkItemRepository, WorkItemRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IWorkItemEmbeddingRepository, WorkItemEmbeddingRepository>();
 
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ProjectService>();

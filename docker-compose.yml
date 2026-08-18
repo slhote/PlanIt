@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: postgres:16
+    # pgvector/pgvector:pg16 = stock postgres:16 + the pgvector extension pre-installed, needed
+    # for the Similar Tasks semantic-embeddings tables (planit-similar-tasks-semantic-embeddings.md).
+    image: pgvector/pgvector:pg16
     container_name: planit-postgres
     restart: unless-stopped
     environment:
