@@ -16,7 +16,10 @@ public class WeightedSimilarityScorer(IEnumerable<ISimilaritySignal> signals, IO
 
         return candidates
             .Select(candidate => (WorkItem: candidate, Score: ComputeWeightedScore(candidate, reference, signalList, settings.Weights)))
-            .Where(r => r.Score > 0.0 && r.Score >= settings.MinScoreThreshold)
+            // MinScoreThreshold alone gates inclusion -- a redundant "Score > 0.0" guard here
+            // used to silently exclude honestly-zero-scored candidates even when the threshold
+            // itself was 0.0 (i.e. "include everything"), contradicting the documented contract.
+            .Where(r => r.Score >= settings.MinScoreThreshold)
             .OrderByDescending(r => r.Score)
             .Take(settings.MaxResults)
             .ToList();
