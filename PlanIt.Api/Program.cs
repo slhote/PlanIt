@@ -91,7 +91,7 @@ builder.Services.AddHttpClient<PythonEmbeddingGenerator>((sp, client) =>
 // Background worker: event-driven queue (fed by the trigger handlers below, auto-discovered by
 // MediatR's assembly scan) + periodic sweep, computing via both generators unconditionally.
 builder.Services.AddOptions<EmbeddingWorkerOptions>()
-    .Bind(builder.Configuration.GetSection(EmbeddingWorkerOptions.SectionName));
+                .Bind(builder.Configuration.GetSection(EmbeddingWorkerOptions.SectionName));
 builder.Services.AddSingleton<EmbeddingWorkQueue>();
 builder.Services.AddHostedService<EmbeddingBackgroundService>();
 

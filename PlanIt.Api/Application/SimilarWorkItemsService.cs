@@ -22,9 +22,8 @@ public class SimilarWorkItemsService(IWorkItemRepository workItemRepository, Wei
             .ToList();
     }
 
-    // On-demand bulk recompute (planit-similar-tasks-semantic-embeddings.md) -- just another
-    // producer onto the same EmbeddingWorkQueue the event-driven triggers and periodic sweep use,
-    // so it goes through the exact same background processing, no separate code path.
+    // On-demand bulk recompute -- just another producer onto the same EmbeddingWorkQueue the event-driven triggers
+    // and periodic sweep use, so it goes through the exact same background processing, no separate code path.
     public async Task<int> RecomputeAllAsync(Guid projectId)
     {
         var workItems = await workItemRepository.GetForProjectAsync(projectId);

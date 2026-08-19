@@ -7,7 +7,7 @@ using PlanIt.Api.Startup.Options;
 
 namespace PlanIt.Api.Application.Similarity.Embeddings;
 
-// Single worker covering all three trigger paths from planit-similar-tasks-semantic-embeddings.md:
+// Single worker covering all three trigger paths:
 // - Event-driven: drains EmbeddingWorkQueue, fed by the MediatR trigger handlers.
 // - Periodic sweep: on a timer, finds stale/missing rows and enqueues them (also the backfill --
 //   a fresh deploy has zero embeddings, so the first sweep run enqueues everything).

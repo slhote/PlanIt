@@ -69,8 +69,8 @@ export async function fetchSimilarWorkItems(projectId: Guid, id: Guid): Promise<
   return apiFetch<SimilarWorkItem[]>(`/projects/${projectId}/workitems/${id}/similar-tasks`);
 }
 
-// Bulk recompute of semantic embeddings for every work item in the project -- project-scoped,
-// not item-scoped, hence no /workitems segment (planit-similar-tasks-semantic-embeddings.md).
+// Bulk recompute of semantic embeddings for every work item in the project.
+// Project-scoped, not item-scoped, hence no /workitems segment
 export async function recomputeSimilarTasks(projectId: Guid): Promise<{ enqueuedCount: number }> {
   return apiFetch<{ enqueuedCount: number }>(`/projects/${projectId}/similar-tasks/recompute`, {
     method: "POST",
