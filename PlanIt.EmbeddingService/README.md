@@ -1,8 +1,6 @@
 # PlanIt.EmbeddingService
 
-FastAPI + `sentence-transformers` microservice -- the Python generation source (Option B) for
-Similar Tasks semantic embeddings. See
-[`planit-similar-tasks-semantic-embeddings.md`](../.claude/docs/plans/planit-similar-tasks-semantic-embeddings.md).
+FastAPI + `sentence-transformers` microservice -- the Python generation source for Similar Tasks semantic embeddings.
 
 Called by `PlanIt.Api`'s `PythonEmbeddingGenerator` over internal HTTP. Not required for local
 dev unless `SimilarWorkItems:EmbeddingSource` is `"Python"` -- the ONNX path works standalone.

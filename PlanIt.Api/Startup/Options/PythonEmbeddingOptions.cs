@@ -4,8 +4,7 @@ public class PythonEmbeddingOptions
 {
     public const string SectionName = "PythonEmbedding";
 
-    // docker-compose service name -- matches the "embedding-service" entry added to
-    // docker-compose.yml (planit-similar-tasks-semantic-embeddings.md's Local dev section).
+    // docker-compose service name -- matches the "embedding-service" entry added to docker-compose.yml 
     public string BaseUrl { get; set; } = "http://localhost:8000";
 
     public int RetryAttempts { get; set; } = 3;

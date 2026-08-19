@@ -4,11 +4,9 @@ using PlanIt.Api.Startup.Options;
 
 namespace PlanIt.Api.Application.Similarity.Embeddings;
 
-// Calls the separate Python microservice (Option B) -- PlanIt.EmbeddingService, FastAPI +
-// sentence-transformers/all-mpnet-base-v2, 768-dim. Unlike the ONNX path, this is a network call
-// across processes even locally, so it's treated as flaky: bounded retry with exponential
-// backoff, then the caller decides what to do with the exception (the background worker's
-// catch-log-skip policy, per planit-similar-tasks-semantic-embeddings.md).
+// Calls the separate Python microservice -- PlanIt.EmbeddingService, FastAPI + sentence-transformers/all-mpnet-base-v2, 768-dim.
+// Unlike the ONNX path, this is a network call across processes even locally, so it's treated as flaky: bounded retry with
+// exponential backoff, then the caller decides what to do with the exception (the background worker's catch-log-skip policy)
 public class PythonEmbeddingGenerator : IEmbeddingGenerator
 {
     private readonly HttpClient _httpClient;

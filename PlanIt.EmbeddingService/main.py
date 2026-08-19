@@ -4,7 +4,6 @@ Separate process from PlanIt.Api, called over internal HTTP by PythonEmbeddingGe
 Deliberately a different model from the ONNX path (all-mpnet-base-v2, 768-dim vs.
 all-MiniLM-L6-v2, 384-dim) -- the point of running both sources is comparing distinct
 approaches, not two copies of the same model through different runtimes.
-See .claude/docs/plans/planit-similar-tasks-semantic-embeddings.md.
 """
 
 from fastapi import FastAPI
