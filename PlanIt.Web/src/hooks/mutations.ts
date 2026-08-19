@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createWorkItem, updateWorkItem, deleteWorkItem } from "../api/workItems";
+import { createWorkItem, updateWorkItem, deleteWorkItem, recomputeSimilarTasks } from "../api/workItems";
 import type { CreateWorkItemInput, UpdateWorkItemInput } from "../api/workItems";
 import { createProject, type ProjectBoard, type CreateProjectInput } from "../api/projects";
 import { addProjectMember, removeProjectMember } from "../api/projectMembers";
@@ -127,5 +127,13 @@ export function useRemoveProjectMemberMutation(projectId: Guid) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projectMembers", projectId] });
     },
+  });
+}
+
+// No cache invalidation on success -- this only enqueues background work, the embeddings
+// themselves don't land synchronously (planit-similar-tasks-semantic-embeddings.md).
+export function useRecomputeSimilarTasksMutation(projectId: Guid) {
+  return useMutation({
+    mutationFn: () => recomputeSimilarTasks(projectId),
   });
 }

@@ -6,6 +6,7 @@ import { Board, computeNewOrder } from "./Board";
 import { CreateWorkItemModal } from "../workitems/CreateWorkItemModal";
 import { WorkItemTypePicker } from "../workitems/WorkItemTypePicker";
 import { CollaboratorsModal } from "./CollaboratorsModal";
+import { ProjectSettingsModal } from "./ProjectSettingsModal";
 import { setLastProjectId } from "./lastProject";
 import { MapIcon } from "../../components/icons";
 import { statusLabel } from "../workitems/WorkItemForm";
@@ -25,6 +26,7 @@ export function ProjectBoardPage() {
   const [pickingType, setPickingType] = useState(false);
   const [creatingType, setCreatingType] = useState<WorkItemType | null>(null);
   const [managingCollaborators, setManagingCollaborators] = useState(false);
+  const [managingSettings, setManagingSettings] = useState(false);
   const [celebration, setCelebration] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -152,9 +154,19 @@ export function ProjectBoardPage() {
           </div>
           {project.description && <p className="page-subtitle">{project.description}</p>}
         </div>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setManagingCollaborators(true)}>
-          👥 {members.length}
-        </button>
+        <div className="row" style={{ gap: "var(--space-2)" }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setManagingCollaborators(true)}>
+            👥 {members.length}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            aria-label="Project settings"
+            onClick={() => setManagingSettings(true)}
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
 
       <select
@@ -229,6 +241,9 @@ export function ProjectBoardPage() {
       )}
       {managingCollaborators && projectId && (
         <CollaboratorsModal projectId={projectId} onClose={() => setManagingCollaborators(false)} />
+      )}
+      {managingSettings && projectId && (
+        <ProjectSettingsModal projectId={projectId} onClose={() => setManagingSettings(false)} />
       )}
     </div>
   );
