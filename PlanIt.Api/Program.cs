@@ -57,6 +57,7 @@ builder.Services.AddScoped<ProjectMemberService>();
 builder.Services.AddScoped<ISimilaritySignal, TagOverlapSignal>();
 builder.Services.AddScoped<ISimilaritySignal, AssigneeMatchSignal>();
 builder.Services.AddScoped<ISimilaritySignal, LexicalTextSignal>();
+builder.Services.AddScoped<ISimilaritySignal, EmbeddingSimilaritySignal>();
 builder.Services.AddScoped<ILexicalSimilarityStrategy>(sp =>
 {
     var lexicalStrategy = sp.GetRequiredService<IOptions<SimilarWorkItemsOptions>>().Value.LexicalStrategy;
