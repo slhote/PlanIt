@@ -19,6 +19,11 @@ PlanIt.Web/.playwright-baselines/
 .env.*
 !.env.example
 
+# Similar Tasks semantic embeddings -- large binary model assets, not committed. See
+# PlanIt.Api/Models/README.md for how to obtain them locally.
+PlanIt.Api/Models/**/*.onnx
+PlanIt.Api/Models/**/vocab.txt
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
