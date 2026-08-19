@@ -6,9 +6,7 @@ using PlanIt.Api.Startup.Options;
 
 namespace PlanIt.Api.Application.Similarity;
 
-// Plugs into the same Prepare seam TfIdfLexicalStrategy uses for its corpus stats -- batch
-// fetches precomputed vectors for the reference + candidate pool up front, rather than a
-// per-candidate lookup inside Score (planit-similar-tasks-semantic-embeddings.md).
+// Batch fetches precomputed vectors for the reference + candidate pool up front, rather than a per-candidate lookup inside Score.
 public class EmbeddingSimilaritySignal(IWorkItemEmbeddingRepository embeddingRepository, IOptions<SimilarWorkItemsOptions> options)
     : ISimilaritySignal
 {
@@ -33,18 +31,16 @@ public class EmbeddingSimilaritySignal(IWorkItemEmbeddingRepository embeddingRep
         if (!_vectors.TryGetValue(candidate.Id, out var candidateVector) ||
             !_vectors.TryGetValue(reference.Id, out var referenceVector))
         {
-            // Not yet computed (or the sweep hasn't caught up) -- doesn't benefit from this
-            // signal's contribution, same as a candidate with no tags scoring 0.0 on
-            // TagOverlapSignal, rather than being excluded from the pool.
+            // Not yet computed (or the sweep hasn't caught up) -- doesn't benefit from this signal's contribution,
+            // same as a candidate with no tags scoring 0.0 on TagOverlapSignal, rather than being excluded from the pool.
             return 0.0;
         }
 
         return CosineSimilarity(candidateVector.ToArray(), referenceVector.ToArray());
     }
 
-    // Both generators L2-normalize their output (OnnxEmbeddingGenerator, and the Python service's
-    // normalize_embeddings=True), so this is really just a dot product -- computed generally here
-    // rather than assuming that invariant holds forever.
+    // Both generators L2-normalize their output (OnnxEmbeddingGenerator and the Python service's normalize_embeddings=True),
+    // so this is really just a dot product -- computed generally here rather than assuming that invariant holds forever.
     private static double CosineSimilarity(float[] a, float[] b)
     {
         double dot = 0, normA = 0, normB = 0;
