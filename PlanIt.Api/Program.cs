@@ -54,7 +54,7 @@ builder.Services.AddScoped<WorkItemService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ProjectMemberService>();
 
-// Similar Tasks Suggestions (planit-similar-tasks-lexical-metadata.md).
+// Similar Tasks Suggestions
 builder.Services.AddScoped<ISimilaritySignal, TagOverlapSignal>();
 builder.Services.AddScoped<ISimilaritySignal, AssigneeMatchSignal>();
 builder.Services.AddScoped<ISimilaritySignal, LexicalTextSignal>();
@@ -70,13 +70,12 @@ builder.Services.AddScoped<ILexicalSimilarityStrategy>(sp =>
 builder.Services.AddScoped<WeightedSimilarityScorer>();
 builder.Services.AddScoped<SimilarWorkItemsService>();
 
-// Semantic embeddings (planit-similar-tasks-semantic-embeddings.md). Singleton: InferenceSession
-// + BertTokenizer are expensive to construct and thread-safe for inference, reused across
-// requests/background-worker items. Not resolved anywhere yet at this step -- wired into the
-// background worker/signal in later steps, so a missing model file doesn't break `dotnet run`
-// until this is actually used.
+// Semantic embeddings. Singleton: InferenceSession + BertTokenizer are expensive to construct and thread-safe for inference,
+// reused across requests/background-worker items.
+// Not resolved anywhere yet at this step -- wired into the background worker/signal in later steps, so a missing model file
+// doesn't break `dotnet run` until this is actually used.
 builder.Services.AddOptions<OnnxEmbeddingOptions>()
-    .Bind(builder.Configuration.GetSection(OnnxEmbeddingOptions.SectionName));
+                .Bind(builder.Configuration.GetSection(OnnxEmbeddingOptions.SectionName));
 builder.Services.AddSingleton<IValidateOptions<OnnxEmbeddingOptions>, OnnxEmbeddingOptionsValidator>();
 builder.Services.AddSingleton<OnnxEmbeddingGenerator>();
 
