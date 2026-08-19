@@ -4,8 +4,7 @@ using PlanIt.Api.Startup.Options;
 namespace PlanIt.Api.Startup.Validation;
 
 // Fail-fast at startup, not on first request -- the model/vocab files are local assets, not a
-// network dependency, so a missing file is a deployment mistake, not a runtime condition to
-// retry (planit-similar-tasks-semantic-embeddings.md's ONNX failure-mode section).
+// network dependency, so a missing file is a deployment mistake, not a runtime condition to retry 
 public class OnnxEmbeddingOptionsValidator : IValidateOptions<OnnxEmbeddingOptions>
 {
     public ValidateOptionsResult Validate(string? name, OnnxEmbeddingOptions options)

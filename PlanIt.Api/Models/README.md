@@ -12,9 +12,7 @@ These are the ONNX export of `sentence-transformers/all-MiniLM-L6-v2` and its Wo
 Configured paths: `OnnxEmbedding:ModelPath` / `OnnxEmbedding:VocabPath` in `appsettings.json`.
 
 Until these files are present, anything that resolves `OnnxEmbeddingGenerator` from DI will throw
-on construction (fail-fast, by design — see `.claude/docs/plans/planit-similar-tasks-semantic-embeddings.md`).
-Nothing resolves it yet as of step 2 of that plan, so `dotnet run` / `dev.ps1` work fine without
-these files until the background worker (step 5) is wired up.
+on construction (fail-fast, by design).
 
 Source: `https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/tree/main/onnx`
 (`model.onnx` + `vocab.txt`).

@@ -6,12 +6,10 @@ using PlanIt.Api.Startup.Options;
 
 namespace PlanIt.Api.Application.Similarity.Embeddings;
 
-// In-process embedding generator (Option A) -- sentence-transformers/all-MiniLM-L6-v2 exported
-// to ONNX, run via Microsoft.ML.OnnxRuntime. No network call; the only failure modes are local
-// (model/vocab file missing or malformed), so this fails fast in the constructor rather than
-// retrying (planit-similar-tasks-semantic-embeddings.md). Registered as a singleton -- the
-// InferenceSession and tokenizer are expensive to construct and are thread-safe for inference,
-// so one instance is reused across requests/background-worker items.
+// In-process embedding generator -- sentence-transformers/all-MiniLM-L6-v2 exported to ONNX, run via Microsoft.ML.OnnxRuntime.
+// No network call; the only failure modes are local (model/vocab file missing or malformed), so this fails fast in the constructor
+// rather than retrying. Registered as a singleton -- the InferenceSession and tokenizer are expensive to construct and are
+// thread-safe for inference, so one instance is reused across requests/background-worker items.
 public class OnnxEmbeddingGenerator : IEmbeddingGenerator, IDisposable
 {
     private readonly InferenceSession _session;
@@ -49,8 +47,9 @@ public class OnnxEmbeddingGenerator : IEmbeddingGenerator, IDisposable
         };
 
         using var results = _session.Run(inputs);
-        // [1, seqLen, hiddenSize] token embeddings -- mean-pooled over the attention mask and
-        // L2-normalized, the standard sentence-transformers sentence-embedding recipe.
+        
+        // [1, seqLen, hiddenSize] token embeddings -- mean-pooled over the attention mask and L2-normalized,
+        // the standard sentence-transformers sentence-embedding recipe.
         var lastHiddenState = results.First(r => r.Name == "last_hidden_state").AsTensor<float>();
         var hiddenSize = lastHiddenState.Dimensions[2];
 
