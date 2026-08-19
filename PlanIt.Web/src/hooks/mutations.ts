@@ -130,8 +130,8 @@ export function useRemoveProjectMemberMutation(projectId: Guid) {
   });
 }
 
-// No cache invalidation on success -- this only enqueues background work, the embeddings
-// themselves don't land synchronously (planit-similar-tasks-semantic-embeddings.md).
+// No cache invalidation on success -- this only enqueues background work, 
+// the embeddings themselves don't land synchronously 
 export function useRecomputeSimilarTasksMutation(projectId: Guid) {
   return useMutation({
     mutationFn: () => recomputeSimilarTasks(projectId),

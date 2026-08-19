@@ -5,7 +5,6 @@ namespace PlanIt.Api.Application.Similarity.Embeddings;
 // Unbounded Channel<Guid> -- the event-driven trigger path. MediatR notification handlers
 // enqueue and return immediately, keeping embedding computation off the request's critical path.
 // Singleton: the channel needs to outlive any single request/scope
-// (planit-similar-tasks-semantic-embeddings.md).
 public class EmbeddingWorkQueue
 {
     private readonly Channel<Guid> _channel = Channel.CreateUnbounded<Guid>();

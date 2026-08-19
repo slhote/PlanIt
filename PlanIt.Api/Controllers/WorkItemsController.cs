@@ -52,12 +52,8 @@ public class WorkItemsController(WorkItemService workItemService, SimilarWorkIte
     public async Task<ActionResult<IReadOnlyList<SimilarWorkItemDto>>> GetSimilarTasks(Guid projectId, Guid id) =>
         Ok(await similarWorkItemsService.GetSimilarAsync(projectId, id));
 
-    // On-demand bulk recompute of semantic embeddings for every work item in the project
-    // (planit-similar-tasks-semantic-embeddings.md) -- project-scoped, not item-scoped, hence the
-    // absolute route override rather than nesting under /workitems/{id}. Gated by the same
-    // ProjectMember policy as everything else in this controller -- no Owner-vs-Member
-    // distinction, since no such role-based authorization exists anywhere else in this codebase
-    // to reuse; see the PR description for this deviation from the design doc's "owner-only" line.
+    // On-demand bulk recompute of semantic embeddings for every work item in the project.
+    // Project-scoped, not item-scoped, hence the absolute route override rather than nesting under /workitems/{id}. 
     [HttpPost("~/projects/{projectId:guid}/similar-tasks/recompute")]
     public async Task<ActionResult<RecomputeSimilarTasksResponse>> RecomputeAllSimilarTasks(Guid projectId) =>
         Ok(new RecomputeSimilarTasksResponse(await similarWorkItemsService.RecomputeAllAsync(projectId)));

@@ -41,6 +41,8 @@ public class EmbeddingSimilaritySignal(IWorkItemEmbeddingRepository embeddingRep
 
     // Both generators L2-normalize their output (OnnxEmbeddingGenerator and the Python service's normalize_embeddings=True),
     // so this is really just a dot product -- computed generally here rather than assuming that invariant holds forever.
+    // Clamped to [0.0, 1.0]: raw cosine similarity ranges [-1.0, 1.0], but ISimilaritySignal.Score's contract is
+    // [0.0, 1.0] -- negative cosine (semantically opposed text) is treated as "no similarity", not a negative score.
     private static double CosineSimilarity(float[] a, float[] b)
     {
         double dot = 0, normA = 0, normB = 0;
@@ -51,7 +53,12 @@ public class EmbeddingSimilaritySignal(IWorkItemEmbeddingRepository embeddingRep
             normB += b[i] * b[i];
         }
 
-        return normA == 0.0 || normB == 0.0 ? 0.0 : dot / (Math.Sqrt(normA) * Math.Sqrt(normB));
+        if (normA == 0.0 || normB == 0.0)
+        {
+            return 0.0;
+        }
+
+        return Math.Max(0.0, dot / (Math.Sqrt(normA) * Math.Sqrt(normB)));
     }
 
     private static EmbeddingSource ParseSource(string value) =>

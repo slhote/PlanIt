@@ -39,10 +39,9 @@ services:
       Jwt__SigningKey: "${JWT_SIGNING_KEY}"
       APPLY_MIGRATIONS: "true"
       # Compose DNS name, not localhost -- reachable regardless of SimilarWorkItems__EmbeddingSource
-      # since the background worker always writes to both tables (planit-similar-tasks-semantic-
-      # embeddings.md). Note: the API image doesn't bake in the ONNX model file (see
-      # PlanIt.Api/Models/README.md), so the ONNX side no-ops gracefully here too unless that's
-      # mounted/copied in separately -- this profile is for exercising the Python path.
+      # since the background worker always writes to both tables.
+      # Note: the API image doesn't bake in the ONNX model file, so the ONNX side no-ops gracefully here 
+      # too unless that's mounted/copied in separately.
       PythonEmbedding__BaseUrl: "http://embedding-service:8000"
     depends_on:
       postgres:
@@ -53,7 +52,7 @@ services:
       - full-stack
 
   embedding-service:
-    # Python generation source (Option B) -- see planit-similar-tasks-semantic-embeddings.md.
+    # Python generation source 
     build:
       context: PlanIt.EmbeddingService
     container_name: planit-embedding-service
