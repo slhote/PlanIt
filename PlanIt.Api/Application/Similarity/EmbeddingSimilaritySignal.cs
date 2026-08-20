@@ -10,6 +10,13 @@ namespace PlanIt.Api.Application.Similarity;
 public class EmbeddingSimilaritySignal(IWorkItemEmbeddingRepository embeddingRepository, IOptions<SimilarWorkItemsOptions> options)
     : ISimilaritySignal
 {
+    // ISimilaritySignal.Name's default derivation strips only a trailing "Signal" from the class
+    // name, which would leave "EmbeddingSimilarity" here -- not "Embedding", the key actually used
+    // by SimilarWorkItemsOptions.Weights in appsettings.json. Without this override the weight
+    // lookup in WeightedSimilarityScorer always misses, so this signal silently contributes 0
+    // regardless of its configured weight.
+    public string Name => "Embedding";
+
     private IReadOnlyDictionary<Guid, Vector> _vectors = new Dictionary<Guid, Vector>();
 
     public void Prepare(WorkItem reference, IReadOnlyList<WorkItem> candidates)
