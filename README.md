@@ -5,7 +5,7 @@ Keep track of the work and plans you have with PlanIt! PlanIt helps you organize
 A mobile-first task board web app for breaking project work into a **Project → Feature/Task** hierarchy, with drag-and-drop status columns and real-time multi-user collaboration along with a custom MCP server you can integrate locally with your AI agent to interact with the PlanIt API.
 
 ## Learning & Examples
-- [Similar-Tasks Scoring Fixtures](.claude/docs/examples/similar-tasks-scoring-fixtures.html) — 43 seeded work items comparing Jaccard vs. TF-IDF lexical strategies, threshold behavior, and structural exclusions
+- [Similar-Tasks Scoring Fixtures](https://slhote.github.io/PlanIt/docs/examples/similar-tasks-scoring-fixtures.html) — 43 seeded work items comparing Jaccard vs. TF-IDF lexical strategies, threshold behavior, and structural exclusions
 
 ## Running locally
 
