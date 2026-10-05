@@ -38,3 +38,6 @@ Thumbs.db
 npm-debug.log*
 
 /Notes/
+
+# Python Virtual Environments
+*.venv
