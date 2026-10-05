@@ -20,6 +20,32 @@ $apiProject = Join-Path $repoRoot "PlanIt.Api"
 $webProject = Join-Path $repoRoot "PlanIt.Web"
 $composeFile = Join-Path $repoRoot "docker-compose.yml"
 
+Write-Host "== Checking Docker ==" -ForegroundColor Cyan
+try {
+    docker ps > $null 2>&1
+} catch {
+    Write-Host "Docker Desktop not running -- starting it now..." -ForegroundColor Yellow
+    & "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+
+    Write-Host "Waiting for Docker to be ready..." -ForegroundColor Yellow
+    $maxRetries = 30
+    $retries = 0
+    while ($retries -lt $maxRetries) {
+        try {
+            docker ps > $null 2>&1
+            Write-Host "Docker is ready." -ForegroundColor Green
+            break
+        } catch {
+            $retries++
+            Start-Sleep -Seconds 2
+        }
+    }
+
+    if ($retries -eq $maxRetries) {
+        throw "Docker failed to start within 60s. Start Docker Desktop manually and try again."
+    }
+}
+
 Write-Host "== Starting Postgres ==" -ForegroundColor Cyan
 docker compose -f $composeFile up -d
 
