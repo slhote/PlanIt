@@ -51,4 +51,10 @@ public class WorkItemsController(WorkItemService workItemService, SimilarWorkIte
     [HttpGet("{id:guid}/similar-tasks")]
     public async Task<ActionResult<IReadOnlyList<SimilarWorkItemDto>>> GetSimilarTasks(Guid projectId, Guid id) =>
         Ok(await similarWorkItemsService.GetSimilarAsync(projectId, id));
+
+    // On-demand bulk recompute of semantic embeddings for every work item in the project.
+    // Project-scoped, not item-scoped, hence the absolute route override rather than nesting under /workitems/{id}. 
+    [HttpPost("~/projects/{projectId:guid}/similar-tasks/recompute")]
+    public async Task<ActionResult<RecomputeSimilarTasksResponse>> RecomputeAllSimilarTasks(Guid projectId) =>
+        Ok(new RecomputeSimilarTasksResponse(await similarWorkItemsService.RecomputeAllAsync(projectId)));
 }

@@ -19,8 +19,7 @@ public class ProjectService(
     }
 
     // Membership is enforced by the [Authorize(Policy = "ProjectMember")] gate on the controller
-    // action, not here (planit-api-contracts-backend.md §7) — a non-member request never reaches
-    // this method.
+    // action, not here — a non-member request never reaches this method.
     public async Task<ProjectBoardDto> GetBoardAsync(Guid projectId)
     {
         var project = await projectRepository.GetByIdAsync(projectId)
@@ -34,7 +33,7 @@ public class ProjectService(
 
     // Inserts the Project row plus the creator's Owner ProjectMember row in the same
     // SaveChangesAsync — ProjectMember is the sole source of truth for access control, so a
-    // project can never exist without its creator already being a member (planit-api-contracts-backend.md §3).
+    // project can never exist without its creator already being a member.
     public async Task<ProjectDto> CreateAsync(CreateProjectRequest request, Guid createdByUserId)
     {
         if (string.IsNullOrWhiteSpace(request.Name))

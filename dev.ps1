@@ -8,6 +8,8 @@
     never committed), applies EF Core migrations, then opens the API and the frontend dev server
     each in their own PowerShell window so their logs stay visible and separate.
 
+    Also starts the Python embedding-service container (docker compose, full-stack profile) 
+
 .EXAMPLE
     .\dev.ps1
 #>
@@ -16,9 +18,25 @@ $ErrorActionPreference = "Stop"
 $repoRoot = $PSScriptRoot
 $apiProject = Join-Path $repoRoot "PlanIt.Api"
 $webProject = Join-Path $repoRoot "PlanIt.Web"
+$composeFile = Join-Path $repoRoot "docker-compose.yml"
 
 Write-Host "== Starting Postgres ==" -ForegroundColor Cyan
-docker compose -f (Join-Path $repoRoot "docker-compose.yml") up -d
+docker compose -f $composeFile up -d
+
+Write-Host "== Starting Python embedding-service ==" -ForegroundColor Cyan
+docker compose -f $composeFile --profile full-stack up -d embedding-service
+
+Write-Host "== Waiting for embedding-service to be healthy ==" -ForegroundColor Cyan
+$deadline = (Get-Date).AddSeconds(90)
+while ($true) {
+    $status = docker inspect --format='{{.State.Health.Status}}' planit-embedding-service 2>$null
+    if ($status -eq "healthy") { break }
+    if ((Get-Date) -gt $deadline) {
+        throw "embedding-service did not become healthy within 90s. Check 'docker logs planit-embedding-service'."
+    }
+    Start-Sleep -Seconds 2
+}
+Write-Host "embedding-service is healthy." -ForegroundColor Green
 
 Write-Host "== Waiting for Postgres to be healthy ==" -ForegroundColor Cyan
 $deadline = (Get-Date).AddSeconds(60)
@@ -64,4 +82,7 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "npm run dev" -Wor
 Write-Host ""
 Write-Host "API:      http://localhost:5223 (health: http://localhost:5223/health)" -ForegroundColor Green
 Write-Host "Frontend: http://localhost:5173" -ForegroundColor Green
+
+Write-Host "Embedding service: http://localhost:8000 (health: http://localhost:8000/health)" -ForegroundColor Green
+
 Write-Host "Both are starting in their own windows -- give them a few seconds." -ForegroundColor Yellow
